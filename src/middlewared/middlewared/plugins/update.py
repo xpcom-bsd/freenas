@@ -1,6 +1,7 @@
 from middlewared.schema import accepts, Bool, Dict, Str
-from middlewared.service import job, Service
+from middlewared.service import job, CallError, Service
 
+import errno
 import re
 import socket
 import sys
@@ -9,6 +10,10 @@ if '/usr/local/lib' not in sys.path:
     sys.path.append('/usr/local/lib')
 
 from freenasOS import Configuration, Manifest, Update, Train
+from freenasOS.Exceptions import (
+    UpdateIncompleteCacheException, UpdateInvalidCacheException,
+    UpdateBusyCacheException,
+)
 from freenasOS.Update import CheckForUpdates, GetServiceDescription
 
 
@@ -138,12 +143,13 @@ def parse_changelog(changelog, start='', end=''):
 
 class UpdateService(Service):
 
-    def get_trains(self):
+    @accepts()
+    async def get_trains(self):
         """
         Returns available trains dict and the currently configured train as well as the
         train of currently booted environment.
         """
-        data = self.middleware.call('datastore.config', 'system.update')
+        data = await self.middleware.call('datastore.config', 'system.update')
         conf = Configuration.Configuration()
         conf.LoadTrainsConfig()
 
@@ -172,7 +178,7 @@ class UpdateService(Service):
         Str('train', required=False),
         required=False,
     ))
-    def check_available(self, attrs=None):
+    async def check_available(self, attrs=None):
         """
         Checks if there is an update available from update server.
 
@@ -194,13 +200,13 @@ class UpdateService(Service):
         """
 
         try:
-            applied = self.middleware.call('cache.get', 'update.applied')
+            applied = await self.middleware.call('cache.get', 'update.applied')
         except Exception:
             applied = False
         if applied is True:
             return {'status': 'REBOOT_REQUIRED'}
 
-        train = (attrs or {}).get('train') or self.get_trains()['selected']
+        train = (attrs or {}).get('train') or (await self.get_trains())['selected']
 
         handler = CheckUpdateHandler()
         manifest = CheckForUpdates(
@@ -215,6 +221,8 @@ class UpdateService(Service):
         data = {
             'status': 'AVAILABLE',
             'changes': handler.changes,
+            'notice': manifest.Notice(),
+            'notes': manifest.Notes(),
         }
 
         conf = Configuration.Configuration()
@@ -233,11 +241,26 @@ class UpdateService(Service):
         return data
 
     @accepts(Str('path'))
-    def get_pending(self, path=None):
+    async def get_pending(self, path=None):
+        """
+        Gets a list of packages already downloaded and ready to be applied.
+        Each entry of the lists consists of type of operation and name of it, e.g.
+
+          {
+            "operation": "upgrade",
+            "name": "baseos-11.0 -> baseos-11.1"
+          }
+        """
         if path is None:
-            path = self.middleware.call('notifier.get_update_location')
+            path = await self.middleware.call('notifier.get_update_location')
         data = []
-        changes = Update.PendingUpdatesChanges(path)
+        try:
+            changes = await self.middleware.threaded(Update.PendingUpdatesChanges, path)
+        except (
+            UpdateIncompleteCacheException, UpdateInvalidCacheException,
+            UpdateBusyCacheException,
+        ):
+            changes = []
         if changes:
             if changes.get("Reboot", True) is False:
                 for svc in changes.get("Restart", []):
@@ -276,12 +299,13 @@ class UpdateService(Service):
         required=False,
     ))
     @job(lock='update', process=True)
-    def update(self, job, attrs=None):
+    async def update(self, job, attrs=None):
         """
         Downloads (if not already in cache) and apply an update.
         """
-        train = (attrs or {}).get('train') or self.get_trains()['selected']
-        location = self.middleware.call('notifier.get_update_location')
+        attrs = attrs or {}
+        train = attrs.get('train') or (await self.get_trains())['selected']
+        location = await self.middleware.call('notifier.get_update_location')
 
         handler = UpdateHandler(self, job)
 
@@ -301,17 +325,17 @@ class UpdateService(Service):
             location,
             install_handler=handler.install_handler,
         )
-        self.middleware.call('cache.put', 'update.applied', True)
+        await self.middleware.call('cache.put', 'update.applied', True)
 
         if attrs.get('reboot'):
-            self.middleware.call('system.reboot', {'delay': 10})
+            await self.middleware.call('system.reboot', {'delay': 10})
         return True
 
     @accepts()
-    @job(lock='updatedownload')
-    def download(self, job):
-        train = self.get_trains()['selected']
-        location = self.middleware.call('notifier.get_update_location')
+    @job(lock='updatedownload', process=True)
+    async def download(self, job):
+        train = (await self.get_trains())['selected']
+        location = await self.middleware.call('notifier.get_update_location')
 
         Update.DownloadUpdate(
             train,
@@ -322,13 +346,15 @@ class UpdateService(Service):
         if not update:
             return False
 
+        notified = False
         try:
-            notified = self.middleware.call('cache.get', 'update.notified')
+            if await self.middleware.call('cache.has_key', 'update.notified'):
+                notified = await self.middleware.call('cache.get', 'update.notified')
         except Exception:
-            notified = False
+            pass
 
         if not notified:
-            self.middleware.call('cache.put', 'update.notified', True)
+            await self.middleware.call('cache.put', 'update.notified', True)
             conf = Configuration.Configuration()
             sys_mani = conf.SystemManifest()
             if sys_mani:
@@ -341,7 +367,7 @@ class UpdateService(Service):
 
             try:
                 # FIXME: Translation
-                self.middleware.call('mail.send', {
+                await self.middleware.call('mail.send', {
                     'subject': '{}: {}'.format(hostname, 'Update Available'),
                     'text': '''A new update is available for the %(train)s train.
 Version: %(version)s
@@ -354,5 +380,20 @@ Changelog:
                     },
                 })
             except Exception:
-                log.warn('Failed to send email about new update', exc_info=True)
+                self.logger.warn('Failed to send email about new update', exc_info=True)
         return True
+
+    @accepts(Str('path'))
+    @job(lock='updatemanual', process=True)
+    async def manual(self, job, path):
+        """
+        Apply manual update of file `path`.
+        """
+        rv = await self.middleware.call('notifier.validate_update', path)
+        if not rv:
+            raise CallError('Invalid update file', errno.EINVAL)
+        await self.middleware.call('notifier.apply_update', path)
+        try:
+            await self.middleware.call('notifier.destroy_upload_location')
+        except Exception:
+            self.logger.warn('Failed to destroy upload location', exc_info=True)

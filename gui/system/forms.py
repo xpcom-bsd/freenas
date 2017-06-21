@@ -44,7 +44,6 @@ from django.conf import settings
 from formtools.wizard.views import SessionWizardView
 from django.core.cache import cache
 from django.core.files.storage import FileSystemStorage
-from django.db import transaction
 from django.db.models import Q
 from django.forms import FileField
 from django.forms.formsets import BaseFormSet, formset_factory
@@ -118,6 +117,7 @@ from common.ssl import CERT_CHAIN_REGEX
 
 log = logging.getLogger('system.forms')
 WIZARD_PROGRESSFILE = '/tmp/.initialwizard_progress'
+BAD_BE_CHARS = "/ *'\"?@!#$%^&()+=~<>;\\"
 
 
 def clean_path_execbit(path):
@@ -166,6 +166,22 @@ def check_certificate(certificate):
     return nmatches
 
 
+def validate_be_name(name):
+    if any(elem in name for elem in BAD_BE_CHARS):
+        raise forms.ValidationError(_('Name does not allow spaces and the following characters: /*\'"?@'))
+    else:
+        beadm_names = subprocess.Popen(
+            "beadm list | awk '{print $7}'",
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding='utf8',
+        ).communicate()[0].split('\n')
+        if name in filter(None, beadm_names):
+            raise forms.ValidationError(_('The name %s already exist.') % (name))
+    return name
+
+
 class BootEnvAddForm(Form):
 
     name = forms.CharField(
@@ -178,12 +194,7 @@ class BootEnvAddForm(Form):
         super(BootEnvAddForm, self).__init__(*args, **kwargs)
 
     def clean_name(self):
-        name = self.cleaned_data.get('name')
-        if not re.search(r'^[a-z0-9_-]+$', name, re.I):
-            raise forms.ValidationError(
-                _('Only alphanumeric, underscores and dashes are allowed.')
-            )
-        return name
+        return validate_be_name(self.cleaned_data.get('name'))
 
     def save(self, *args, **kwargs):
         kwargs = {}
@@ -208,36 +219,13 @@ class BootEnvRenameForm(Form):
         self._name = kwargs.pop('name')
         super(BootEnvRenameForm, self).__init__(*args, **kwargs)
 
-    def is_duplicated_name(self, name):
-        beadm_names = subprocess.Popen(
-            "beadm list | awk '{print $7}'",
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            encoding='utf8',
-        ).communicate()[0].split('\n')
-        beadm_names = [_f for _f in beadm_names if _f]
-        if name in beadm_names:
-            return True
-        else:
-            return False
-
     def clean_name(self):
-        name = self.cleaned_data.get('name')
-        bad_chars = "/ *'\"?@"
-        if any(elem in name for elem in bad_chars):
-            raise forms.ValidationError(_('Name does not allow spaces and the following characters: /*\'"?@'))
-        else:
-            if self.is_duplicated_name(name):
-                raise forms.ValidationError(_('The name %s already exist.') % (name))
-            return name
+        return validate_be_name(self.cleaned_data.get('name'))
 
     def save(self, *args, **kwargs):
         new_name = self.cleaned_data.get('name')
-        rename = Update.RenameClone(
-            self._name,
-            new_name,
-        )
+        with client as c:
+            rename = c.call('bootenv.rename', self._name, new_name)
         if rename is False:
             raise MiddlewareError(_('Failed to rename Boot Environment.'))
 
@@ -288,7 +276,6 @@ class BootEnvPoolAttachForm(Form):
 
         rv = notifier().bootenv_attach_disk(self.label, devname)
         if rv:
-            notifier().sync_disks()
             return True
         else:
             return False
@@ -340,7 +327,6 @@ class BootEnvPoolReplaceForm(Form):
 
         rv = notifier().bootenv_replace_disk(self.label, devname)
         if rv == 0:
-            notifier().sync_disks()
             return True
         else:
             return False
@@ -356,9 +342,9 @@ class CommonWizard(SessionWizardView):
         })
         if not self.request.is_ajax():
             response.content = (
-                "<html><body><textarea>"
+                b"<html><body><textarea>"
                 + response.content +
-                "</textarea></boby></html>"
+                b"</textarea></boby></html>"
             )
         return response
 
@@ -436,7 +422,8 @@ class InitialWizard(CommonWizard):
         ds_form = form_list.get('ds')
         # sys_form = form_list.get('system')
 
-        with transaction.atomic():
+        model_objs = []
+        try:
             _n = notifier()
             if volume_form or volume_import:
 
@@ -456,13 +443,12 @@ class InitialWizard(CommonWizard):
                             'for futher details check pool status'
                         ) % volume_name)
 
-                volume = Volume(
-                    vol_name=volume_name,
-                    vol_fstype='ZFS',
-                )
+                volume = Volume(vol_name=volume_name)
                 volume.save()
+                model_objs.append(volume)
 
-                Scrub.objects.create(scrub_volume=volume)
+                scrub = Scrub.objects.create(scrub_volume=volume)
+                model_objs.append(scrub)
 
                 if volume_form:
                     bysize = volume_form._get_unused_disks_by_size()
@@ -485,7 +471,7 @@ class InitialWizard(CommonWizard):
                     for disk in o.smarttest_disks.all():
                         if disk.pk not in disks:
                             disks.append(disk.pk)
-                qs = Disk.objects.filter(disk_enabled=True).exclude(pk__in=disks)
+                qs = Disk.objects.filter(disk_expiretime=None).exclude(pk__in=disks)
 
                 if qs.exists():
                     smarttest = SMARTTest.objects.create(
@@ -493,9 +479,10 @@ class InitialWizard(CommonWizard):
                         smarttest_dayweek='7',
                     )
                     smarttest.smarttest_disks.add(*list(qs))
+                    model_objs.append(smarttest)
 
             else:
-                volume = Volume.objects.filter(vol_fstype='ZFS')[0]
+                volume = Volume.objects.all()[0]
                 volume_name = volume.vol_name
 
             curstep += 1
@@ -544,6 +531,7 @@ class InitialWizard(CommonWizard):
                                 bsdgrp_gid=gid,
                                 bsdgrp_group=share_group,
                             )
+                            model_objs.append(group)
                         else:
                             group = bsdGroups.objects.all()[0]
                     else:
@@ -566,7 +554,7 @@ class InitialWizard(CommonWizard):
                                 homedir='/nonexistent',
                                 password_disabled=password_disabled
                             )
-                            bsdUsers.objects.create(
+                            user = bsdUsers.objects.create(
                                 bsdusr_username=share_user,
                                 bsdusr_full_name=share_user,
                                 bsdusr_uid=uid,
@@ -574,6 +562,7 @@ class InitialWizard(CommonWizard):
                                 bsdusr_unixhash=unixhash,
                                 bsdusr_smbhash=smbhash,
                             )
+                            model_objs.append(user)
 
                 else:
                     errno, errmsg = _n.create_zfs_vol(
@@ -594,29 +583,29 @@ class InitialWizard(CommonWizard):
                 if 'cifs' == share_purpose:
                     if share_allowguest:
                         sharekwargs['cifs_guestok'] = True
-                    CIFS_Share.objects.create(
+                    model_objs.append(CIFS_Share.objects.create(
                         cifs_name=share_name,
                         cifs_path=path,
                         **sharekwargs
-                    )
+                    ))
 
                 if 'afp' == share_purpose:
                     if share_timemachine:
                         sharekwargs['afp_timemachine'] = True
-                    AFP_Share.objects.create(
+                    model_objs.append(AFP_Share.objects.create(
                         afp_name=share_name,
                         afp_path=path,
                         **sharekwargs
-                    )
+                    ))
 
                 if 'nfs' == share_purpose:
                     nfs_share = NFS_Share.objects.create(
                         nfs_comment=share_name,
                     )
-                    NFS_Share_Path.objects.create(
+                    model_objs.append(NFS_Share_Path.objects.create(
                         share=nfs_share,
                         path=path,
-                    )
+                    ))
 
                 if 'iscsitarget' == share_purpose:
 
@@ -625,10 +614,11 @@ class InitialWizard(CommonWizard):
                         portal = qs[0]
                     else:
                         portal = iSCSITargetPortal.objects.create()
-                        iSCSITargetPortalIP.objects.create(
+                        model_objs.append(portal)
+                        model_objs.append(iSCSITargetPortalIP.objects.create(
                             iscsi_target_portalip_portal=portal,
                             iscsi_target_portalip_ip='0.0.0.0',
-                        )
+                        ))
 
                     qs = iSCSITargetAuthorizedInitiator.objects.all()
                     if qs.exists():
@@ -637,6 +627,7 @@ class InitialWizard(CommonWizard):
                         authini = (
                             iSCSITargetAuthorizedInitiator.objects.create()
                         )
+                        model_objs.append(authini)
                     try:
                         nic = list(choices.NICChoices(
                             nolagg=True, novlan=True, exclude_configured=False)
@@ -666,12 +657,13 @@ class InitialWizard(CommonWizard):
                     target = iSCSITarget.objects.create(
                         iscsi_target_name=iscsi_target_name
                     )
+                    model_objs.append(target)
 
-                    iSCSITargetGroups.objects.create(
+                    model_objs.append(iSCSITargetGroups.objects.create(
                         iscsi_target=target,
                         iscsi_target_portalgroup=portal,
                         iscsi_target_initiatorgroup=authini,
-                    )
+                    ))
 
                     iscsi_target_extent_path = 'zvol/%s/%s' % (
                         volume_name,
@@ -684,10 +676,11 @@ class InitialWizard(CommonWizard):
                         iscsi_target_extent_path=iscsi_target_extent_path,
                         iscsi_target_extent_serial=serial,
                     )
-                    iSCSITargetToExtent.objects.create(
+                    model_objs.append(extent)
+                    model_objs.append(iSCSITargetToExtent.objects.create(
                         iscsi_target=target,
                         iscsi_extent=extent,
-                    )
+                    ))
 
                 if share_purpose not in services_restart:
                     services.objects.filter(srv_service=share_purpose).update(
@@ -747,6 +740,10 @@ class InitialWizard(CommonWizard):
                     'Active Directory data failed to validate: %r',
                     settingsform._errors,
                 )
+        except Exception:
+            for obj in reversed(model_objs):
+                obj.delete()
+            raise
 
         if ds_form:
 
@@ -948,12 +945,12 @@ class ManualUpdateWizard(FileWizard):
 
         try:
             if not _n.is_freenas() and _n.failover_licensed():
-                s = _n.failover_rpc(timeout=10)
-                s.notifier('create_upload_location', None, None)
-                _n.sync_file_send(s, path, '/var/tmp/firmware/update.tar.xz')
-                s.update_manual('/var/tmp/firmware/update.tar.xz')
+                with client as c:
+                    c.call('failover.call_remote', 'notifier.create_upload_location')
+                    _n.sync_file_send(c, path, '/var/tmp/firmware/update.tar.xz')
+                    c.call('failover.call_remote', 'update.manual', ['/var/tmp/firmware/update.tar.xz'], {'job': True})
                 try:
-                    s.reboot()
+                    c.call('failover.call_remote', 'system.reboot', [{'delay': 2}])
                 except:
                     pass
                 response = render_to_response('failover/update_standby.html')
@@ -972,9 +969,9 @@ class ManualUpdateWizard(FileWizard):
 
         if not self.request.is_ajax():
             response.content = (
-                "<html><body><textarea>"
+                b"<html><body><textarea>"
                 + response.content +
-                "</textarea></boby></html>"
+                b"</textarea></boby></html>"
             )
         return response
 
@@ -1607,7 +1604,6 @@ class ConsulAlertsForm(ModelForm):
         required=False,
     )
 
-
     class Meta:
         fields = '__all__'
         model = models.ConsulAlerts
@@ -1699,10 +1695,9 @@ class ConsulAlertsForm(ModelForm):
             objs.save()
 
         cdata = self.cleaned_data
+
         with client as c:
             c.call('consul.do_create', cdata)
-
-        notifier().restart("consul-alerts")
 
         return objs
 
@@ -1710,7 +1705,6 @@ class ConsulAlertsForm(ModelForm):
         with client as c:
             c.call('consul.do_delete', self.instance.consulalert_type, self.instance.attributes)
 
-        notifier().restart("consul-alerts")
         self.instance.delete()
 
 
@@ -1727,7 +1721,7 @@ class SystemDatasetForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(SystemDatasetForm, self).__init__(*args, **kwargs)
         pool_choices = [('', ''), ('freenas-boot', 'freenas-boot')]
-        for v in Volume.objects.filter(vol_fstype='ZFS'):
+        for v in Volume.objects.all():
             if v.is_decrypted():
                 pool_choices.append((v.vol_name, v.vol_name))
 
@@ -2059,7 +2053,7 @@ class InitialWizardShareForm(Form):
 
     def clean_share_name(self):
         share_name = self.cleaned_data.get('share_name')
-        qs = Volume.objects.filter(vol_fstype='ZFS')
+        qs = Volume.objects.all()
         if qs.exists():
             volume_name = qs[0].vol_name
             path = '/mnt/%s/%s' % (volume_name, share_name)

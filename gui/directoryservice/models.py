@@ -910,8 +910,8 @@ class ActiveDirectory(DirectoryServiceBase):
             blank=False
     )
     ad_enable_monitor = models.BooleanField(
-        verbose_name=_("Enable Monitoring"),
-        help_text=_("Restarts AD automatically if the service is disconnected"),
+        verbose_name=_("Enable Monitoring (Experimental)"),
+        help_text=_("Restarts AD automatically if the service is disconnected. Still experimental, use with caution!"),
         default=False
     )
     ad_ssl = models.CharField(
@@ -1103,7 +1103,7 @@ class ActiveDirectory(DirectoryServiceBase):
                 super(ActiveDirectory, self).save()
 
             except Exception as e:
-                log.debug("ActiveDirectory: Unable to create kerberos realm: %s", e)
+                log.debug("ActiveDirectory: Unable to create kerberos realm: %s", e, exc_info=True)
 
     class Meta:
         verbose_name = _("Active Directory")

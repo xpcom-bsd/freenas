@@ -1,5 +1,6 @@
-from middlewared.service import Service
+from middlewared.service import CallError, Service
 
+import errno
 import os
 import sys
 import logging
@@ -35,7 +36,6 @@ from freenasUI.directoryservice.models import (
     IDMAP_TYPE_RID,
     IDMAP_TYPE_TDB,
     IDMAP_TYPE_TDB2,
-    DS_TYPE_CIFS,
 )
 from freenasUI.directoryservice.utils import get_idmap_object
 
@@ -168,10 +168,10 @@ class NotifierService(Service):
             pass
         return ret
 
-    def ds_get_idmap_object(self, ds_type, id, idmap_backend):
+    async def ds_get_idmap_object(self, ds_type, id, idmap_backend):
         """Temporary wrapper to serialize IDMAP objects"""
         obj = get_idmap_object(ds_type, id, idmap_backend)
-        data = django_modelobj_serialize(self.middleware, obj)
+        data = await django_modelobj_serialize(self.middleware, obj)
         data['idmap_backend_name'] = obj.idmap_backend_name
         data['idmap_backend_type'] = obj.idmap_backend_type
         # Only these types have SSL
@@ -179,7 +179,7 @@ class NotifierService(Service):
             return data
         cert = obj.get_certificate()
         if cert:
-            data['certificate'] = django_modelobj_serialize(self.middleware, cert)
+            data['certificate'] = await django_modelobj_serialize(self.middleware, cert)
         else:
             data['certificate'] = None
         data['ssl'] = obj.get_ssl()
@@ -224,7 +224,10 @@ class NotifierService(Service):
         """Temporary wrapper to get to UI choices"""
         if args is None:
             args = []
-        attr = getattr(choices, name)
+        try:
+            attr = getattr(choices, name)
+        except AttributeError as e:
+            raise CallError(str(e), errno.ENOENT)
         if callable(attr):
             rv = list(attr(*args))
         else:

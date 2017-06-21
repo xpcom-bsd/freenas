@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import subprocess
 
@@ -5,16 +6,25 @@ if '/usr/local/lib' not in sys.path:
     sys.path.append('/usr/local/lib')
 from freenasOS import Configuration
 
+VERSION = None
 
-def django_modelobj_serialize(middleware, obj, extend=None, field_prefix=None):
+
+async def django_modelobj_serialize(middleware, obj, extend=None, field_prefix=None):
     from django.db.models.fields.related import ForeignKey
     from freenasUI.contrib.IPAddressField import (
         IPAddressField, IP4AddressField, IP6AddressField
     )
     data = {}
     for field in obj._meta.fields:
-        value = getattr(obj, field.name)
         name = field.name
+        try:
+            value = getattr(obj, name)
+        except Exception as e:
+            # If foreign key does not exist set it to None
+            if isinstance(field, ForeignKey) and isinstance(e, field.rel.model.DoesNotExist):
+                data[name] = None
+                continue
+            raise
         if field_prefix and name.startswith(field_prefix):
             name = name[len(field_prefix):]
         if isinstance(field, (
@@ -22,17 +32,33 @@ def django_modelobj_serialize(middleware, obj, extend=None, field_prefix=None):
         )):
             data[name] = str(value)
         elif isinstance(field, ForeignKey):
-            data[name] = django_modelobj_serialize(middleware, value) if value is not None else value
+            data[name] = await django_modelobj_serialize(middleware, value) if value is not None else value
         else:
             data[name] = value
     if extend:
-        data = middleware.call(extend, data)
+        data = await middleware.call(extend, data)
     return data
 
 
-def Popen(*args, **kwargs):
+def Popen(args, **kwargs):
     kwargs.setdefault('encoding', 'utf8')
-    return subprocess.Popen(*args, **kwargs)
+    shell = kwargs.pop('shell', None)
+    if shell:
+        return asyncio.create_subprocess_shell(args, **kwargs)
+    else:
+        return asyncio.create_subprocess_exec(*args, **kwargs)
+
+
+async def run(*args, **kwargs):
+    kwargs.setdefault('stdout', subprocess.PIPE)
+    kwargs.setdefault('stderr', subprocess.PIPE)
+    check = kwargs.pop('check', True)
+    proc = await asyncio.create_subprocess_exec(*args, **kwargs)
+    stdout, stderr = await proc.communicate()
+    cp = subprocess.CompletedProcess(args, proc.returncode, stdout=stdout, stderr=stderr)
+    if check:
+        cp.check_returncode()
+    return cp
 
 
 def filter_list(_list, filters=None, options=None):
@@ -89,11 +115,20 @@ def filter_list(_list, filters=None, options=None):
     return rv
 
 
+def sw_version():
+    global VERSION
+    if VERSION is None:
+        conf = Configuration.Configuration()
+        sys_mani = conf.SystemManifest()
+        if sys_mani:
+            VERSION = sys_mani.Version()
+    return VERSION
+
+
 def sw_version_is_stable():
-
     conf = Configuration.Configuration()
-
-    if 'stable' in conf.CurrentTrain().lower():
+    train = conf.CurrentTrain()
+    if train and 'stable' in train.lower():
         return True
     else:
         return False

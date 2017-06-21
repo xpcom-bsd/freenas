@@ -59,6 +59,7 @@ class VM(Model):
         help_text=_('Megabytes of RAM for the virtual machine.'
                     'This memory will be allocated when the VM is running '
                     'and not available to the host system or other VMs.'),
+        validators=[MinValueValidator(512)],
     )
     bootloader = models.CharField(
         verbose_name=_('Boot Method'),
@@ -66,6 +67,11 @@ class VM(Model):
         help_text=_('System boot method and architecture.'),
         choices=choices.VM_BOOTLOADER,
         default='UEFI',
+    )
+    autostart = models.BooleanField(
+        verbose_name=_('Autostart'),
+        help_text=_('Guest VM will start on boot.'),
+        default=False,
     )
 
     class Meta:

@@ -1,33 +1,29 @@
-from gevent import monkey
-monkey.patch_all()
-
 from .apidocs import app as apidocs_app
 from .client import ejson as json
-from .client.protocol import DDPProtocol
 from .job import Job, JobsQueue
 from .restful import RESTfulAPI
-from .service import CallException
-from .utils import Popen
-from collections import OrderedDict, defaultdict
+from .schema import Error as SchemaError
+from .service import CallError, CallException
+from aiohttp import web
+from aiohttp_wsgi import WSGIHandler
+from collections import defaultdict
 from daemon import DaemonContext
 from daemon.pidfile import TimeoutPIDLockFile
-from gevent.threadpool import ThreadPool
-from gevent.wsgi import WSGIServer
-from geventwebsocket import WebSocketServer, WebSocketApplication, Resource
 
 import argparse
+import asyncio
 import binascii
-import cgi
-import gevent
-import greenlet
+import concurrent.futures
+import errno
 import imp
 import inspect
 import linecache
 import os
 import setproctitle
 import signal
-import subprocess
 import sys
+import threading
+import time
 import traceback
 import types
 import urllib.parse
@@ -35,13 +31,13 @@ import uuid
 from . import logger
 
 
-class Application(WebSocketApplication):
+class Application(object):
 
-    protocol_class = DDPProtocol
-
-    def __init__(self, *args, **kwargs):
-        super(Application, self).__init__(*args, **kwargs)
-        self.authenticated = self._check_permission()
+    def __init__(self, middleware, request, response):
+        self.middleware = middleware
+        self.request = request
+        self.response = response
+        self.authenticated = False
         self.handshake = False
         self.logger = logger.Logger('application').getLogger()
         self.sessionid = str(uuid.uuid4())
@@ -54,7 +50,6 @@ class Application(WebSocketApplication):
           on_close(app)
         """
         self.__callbacks = defaultdict(list)
-
         self.__subscribed = {}
 
     def register_callback(self, name, method):
@@ -62,7 +57,7 @@ class Application(WebSocketApplication):
         self.__callbacks[name].append(method)
 
     def _send(self, data):
-        self.ws.send(json.dumps(data))
+        self.response.send_json(data, dumps=json.dumps)
 
     def _tb_error(self, exc_info):
         klass, exc, trace = exc_info
@@ -129,64 +124,47 @@ class Application(WebSocketApplication):
             'formatted': ''.join(traceback.format_exception(*exc_info)),
         }
 
-    def send_error(self, message, error, exc_info=None):
+    def send_error(self, message, errno, reason=None, exc_info=None):
         self._send({
             'msg': 'result',
             'id': message['id'],
             'error': {
-                'error': error,
+                'error': errno,
+                'reason': reason,
                 'trace': self._tb_error(exc_info) if exc_info else None,
             },
         })
 
-    def _check_permission(self):
-        remote_addr = self.ws.environ['REMOTE_ADDR']
-        remote_port = self.ws.environ['REMOTE_PORT']
-
-        if remote_addr not in ('127.0.0.1', '::1'):
-            return False
-
-        remote = '{0}:{1}'.format(remote_addr, remote_port)
-
-        proc = Popen([
-            '/usr/bin/sockstat', '-46c', '-p', remote_port
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True)
-        for line in proc.communicate()[0].strip().splitlines()[1:]:
-            cols = line.split()
-            if cols[-2] == remote and cols[0] == 'root':
-                return True
-        return False
-
-    def call_method(self, message):
+    async def call_method(self, message):
 
         try:
-            result = self.middleware.call_method(self, message)
+            result = await self.middleware.call_method(self, message)
             if isinstance(result, Job):
                 result = result.id
+            elif isinstance(result, types.GeneratorType):
+                result = list(result)
+            elif isinstance(result, types.AsyncGeneratorType):
+                result = [i async for i in result]
             self._send({
                 'id': message['id'],
                 'msg': 'result',
                 'result': result,
             })
-        except CallException as e:
+        except (CallException, SchemaError) as e:
             # CallException and subclasses are the way to gracefully
             # send errors to the client
-            self.send_error(message, str(e), sys.exc_info())
+            self.send_error(message, e.errno, str(e), sys.exc_info())
         except Exception as e:
-            self.send_error(message, str(e), sys.exc_info())
+            self.send_error(message, errno.EINVAL, str(e), sys.exc_info())
             self.logger.warn('Exception while calling {}(*{})'.format(message['method'], message.get('params')), exc_info=True)
 
-            try:
-                sw_version = self.middleware.call('system.version')
-            except:
-                self.logger.debug('Failed to get system version', exc_info=True)
-
-            if self.middleware.rollbar.is_rollbar_disabled():
-                self.logger.debug('[Rollbar] is disabled using sentinel file.')
+            if self.middleware.crash_reporting.is_disabled():
+                self.logger.debug('[Crash Reporting] is disabled using sentinel file.')
             else:
                 extra_log_files = (('/var/log/middlewared.log', 'middlewared_log'),)
-                gevent.spawn(self.middleware.rollbar.rollbar_report, sys.exc_info(), None, sw_version, extra_log_files)
-                self.logger.info('[Rollbar] report sent.')
+                asyncio.ensure_future(self.middleware.threaded(
+                    self.middleware.crash_reporting.report, sys.exc_info(), None, extra_log_files
+                ))
 
     def subscribe(self, ident, name):
         self.__subscribed[ident] = name
@@ -233,7 +211,7 @@ class Application(WebSocketApplication):
 
         self.middleware.unregister_wsclient(self)
 
-    def on_message(self, message):
+    async def on_message(self, message):
         # Run callbacks registered in plugins for on_message
         for method in self.__callbacks['on_message']:
             try:
@@ -248,6 +226,7 @@ class Application(WebSocketApplication):
                     'version': '1',
                 })
             else:
+                await self.middleware.call_hook('core.on_connect', app=self)
                 self._send({
                     'msg': 'connected',
                     'session': self.sessionid,
@@ -263,7 +242,7 @@ class Application(WebSocketApplication):
             return
 
         if message['msg'] == 'method':
-            gevent.spawn(self.call_method, message)
+            asyncio.ensure_future(self.call_method(message))
             return
         elif message['msg'] == 'ping':
             pong = {'msg': 'pong'}
@@ -273,7 +252,7 @@ class Application(WebSocketApplication):
             return
 
         if not self.authenticated:
-            self.send_error(message, 'Not authenticated')
+            self.send_error(message, errno.EACCES, 'Not authenticated')
             return
 
         if message['msg'] == 'sub':
@@ -287,40 +266,29 @@ class FileApplication(object):
     def __init__(self, middleware):
         self.middleware = middleware
 
-    def __call__(self, environ, start_response):
-        # Path is in the form of:
-        # /_download/{jobid}?auth_token=XXX
-        path = environ['PATH_INFO'][1:].split('/')
-
-        if path[0] == '_download':
-            return self.download(path, environ, start_response)
-        elif path[0] == '_upload':
-            return self.upload(path, environ, start_response)
-        else:
-            start_response('404 Not found', [])
-            return ['']
-
-    def download(self, path, environ, start_response):
-
-        if not path[-1].isdigit():
-            start_response('404 Not found', [])
-            return ['']
+    async def download(self, request):
+        path = request.path.split('/')
+        if not request.path[-1].isdigit():
+            resp = web.Response()
+            resp.set_status(404)
+            return resp
 
         job_id = int(path[-1])
         jobs = self.middleware.get_jobs().all()
         job = jobs.get(job_id)
         if not job:
-            start_response('404 Not found', [])
-            return ['']
+            resp = web.Response()
+            resp.set_status(404)
+            return resp
 
-        qs = urllib.parse.parse_qs(environ['QUERY_STRING'])
+        qs = urllib.parse.parse_qs(request.query_string)
         denied = False
         filename = None
         if 'auth_token' not in qs:
             denied = True
         else:
             auth_token = qs.get('auth_token')[0]
-            token = self.middleware.call('auth.get_token', auth_token)
+            token = await self.middleware.call('auth.get_token', auth_token)
             if not token:
                 denied = True
             else:
@@ -329,132 +297,168 @@ class FileApplication(object):
                 else:
                     filename = token['attributes'].get('filename')
         if denied:
-            start_response('401 Access Denied', [])
-            return ['']
+            resp = web.Response()
+            resp.set_status(401)
+            return resp
 
-        start_response('200 OK', [
-            ('Content-Type', 'application/octet-stream'),
-            ('Content-Disposition', f'attachment; filename="{filename}"'),
-            ('Transfer-Encoding', 'chunked'),
-        ])
+        resp = web.StreamResponse(status=200, reason='OK', headers={
+            'Content-Type': 'application/octet-stream',
+            'Content-Disposition': f'attachment; filename="{filename}"',
+            'Transfer-Encoding': 'chunked',
+        })
+        await resp.prepare(request)
 
         f = None
         try:
-            f = gevent.fileobject.FileObject(job.read_fd, 'rb', close=False)
-            while True:
-                read = f.read(1024)
-                if read == b'':
-                    break
-                yield read
+            def read_write():
+                f = os.fdopen(job.read_fd, 'rb')
+                while True:
+                    read = f.read(1024)
+                    if read == b'':
+                        break
+                    resp.write(read)
+                    #await web.drain()
+            await self.middleware.threaded(read_write)
+            await resp.drain()
 
         finally:
             if f:
                 f.close()
-                os.close(job.read_fd)
+        return resp
 
-    def upload(self, path, environ, start_response):
+    async def upload(self, request):
 
         denied = True
-        auth = environ.get('HTTP_AUTHORIZATION')
+        auth = request.headers.get('Authorization')
         if auth:
             if auth.startswith('Basic '):
                 try:
                     auth = binascii.a2b_base64(auth[6:]).decode()
                     if ':' in auth:
                         user, password = auth.split(':', 1)
-                        if self.middleware.call('auth.check_user', user, password):
+                        if await self.middleware.call('auth.check_user', user, password):
                             denied = False
                 except binascii.Error:
                     pass
         if denied:
-            start_response('401 Access Denied', [])
-            return ['']
+            resp = web.Response()
+            resp.set_status(401)
+            return resp
 
-        form = cgi.FieldStorage(environ=environ, fp=environ['wsgi.input'])
+        form = {}
+        reader = await request.multipart()
+        while True:
+            part = await reader.next()
+            if part is None:
+                break
+            form[part.name] = await part.read()  # FIXME: handle big files
+
         if 'data' not in form or 'file' not in form:
-            start_response('405 Method Not Allowed', [])
-            return ['']
+            resp = web.Response(status=405, reason='Expected data not on payload')
+            resp.set_status(405)
+            return resp
 
         try:
-            data = json.loads(form['data'].file.read())
-            job = self.middleware.call(data['method'], *(data.get('params') or []))
+            data = json.loads(form['data'])
+            job = await self.middleware.call(data['method'], *(data.get('params') or []))
         except Exception:
-            start_response('405 Method Not Allowed', [])
-            return [b'Invalid data']
+            resp = web.Response()
+            resp.set_status(405)
+            return resp
 
         f = None
         try:
-            f = gevent.fileobject.FileObject(job.write_fd, 'wb', close=False)
-            while True:
-                read = form['file'].file.read(1024)
-                if read == b'':
-                    break
-                f.write(read)
+            def read_write():
+                f = os.fdopen(job.write_fd, 'wb')
+                i = 0
+                while True:
+                    read = form['file'][i* 1024:(i + 1) * 1024]
+                    if read == b'':
+                        break
+                    f.write(read)
+                    i += 1
+            await self.middleware.threaded(read_write)
         finally:
             if f:
                 f.close()
-                os.close(job.write_fd)
 
-        start_response('200 OK', [
-            ('Content-Type', 'application/json'),
-        ])
-        yield json.dumps({
-            'job_id': job.id,
-        }).encode('utf8')
+        resp = web.Response(
+            status=200,
+            headers={
+                'Content-Type': 'application/json',
+            },
+            body=json.dumps({'job_id': job.id}).encode(),
+        )
+        return resp
 
 
 class Middleware(object):
 
-    def __init__(self):
-        self.logger_name = logger.Logger('middlewared')
-        self.logger = self.logger_name.getLogger()
-        self.rollbar = logger.Rollbar()
+    def __init__(self, loop_monitor=True, plugins_dirs=None):
+        self.logger = logger.Logger('middlewared').getLogger()
+        self.crash_reporting = logger.CrashReporting()
+        self.loop_monitor = loop_monitor
+        self.__loop = None
+        self.__thread_id = threading.get_ident()
+        self.__threadpool = concurrent.futures.ThreadPoolExecutor(
+            max_workers=5,
+        )
         self.__jobs = JobsQueue(self)
         self.__schemas = {}
         self.__services = {}
         self.__wsclients = {}
+        self.__event_subs = defaultdict(list)
         self.__hooks = defaultdict(list)
         self.__server_threads = []
         self.__init_services()
-        self.__plugins_load()
-        self.__threadpool = ThreadPool(5)
+        self.__plugins_load(plugins_dirs or [])
 
     def __init_services(self):
         from middlewared.service import CoreService
         self.add_service(CoreService(self))
 
-    def __plugins_load(self):
+    def __plugins_load(self, plugins_dirs):
         from middlewared.service import Service, CRUDService, ConfigService
-        plugins_dir = os.path.join(
+
+        main_plugins_dir = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
             'plugins',
         )
-        self.logger.debug('Loading plugins from {0}'.format(plugins_dir))
-        if not os.path.exists(plugins_dir):
-            raise ValueError('plugins dir not found')
+        plugins_dirs.insert(0, main_plugins_dir)
 
-        for f in os.listdir(plugins_dir):
-            if not f.endswith('.py'):
-                continue
-            f = f[:-3]
-            fp, pathname, description = imp.find_module(f, [plugins_dir])
-            try:
-                mod = imp.load_module(f, fp, pathname, description)
-            finally:
-                if fp:
-                    fp.close()
+        self.logger.debug('Loading plugins from {0}'.format(','.join(plugins_dirs)))
 
-            for attr in dir(mod):
-                attr = getattr(mod, attr)
-                if not inspect.isclass(attr):
+        setup_funcs = []
+        for plugins_dir in plugins_dirs:
+
+            if not os.path.exists(plugins_dir):
+                raise ValueError(f'plugins dir not found: {plugins_dir}')
+
+            for f in os.listdir(plugins_dir):
+                if not f.endswith('.py'):
                     continue
-                if attr in (Service, CRUDService, ConfigService):
-                    continue
-                if issubclass(attr, Service):
-                    self.add_service(attr(self))
+                f = f[:-3]
+                fp, pathname, description = imp.find_module(f, [plugins_dir])
+                try:
+                    mod = imp.load_module(f, fp, pathname, description)
+                finally:
+                    if fp:
+                        fp.close()
 
-            if hasattr(mod, 'setup'):
-                mod.setup(self)
+                for attr in dir(mod):
+                    attr = getattr(mod, attr)
+                    if not inspect.isclass(attr):
+                        continue
+                    if attr in (Service, CRUDService, ConfigService):
+                        continue
+                    if issubclass(attr, Service):
+                        self.add_service(attr(self))
+
+                if hasattr(mod, 'setup'):
+                    setup_funcs.append(mod.setup)
+
+        for f in setup_funcs:
+            f(self)
 
         # Now that all plugins have been loaded we can resolve all method params
         # to make sure every schema is patched and references match
@@ -499,7 +503,7 @@ class Middleware(object):
             'sync': sync,
         })
 
-    def call_hook(self, name, *args, **kwargs):
+    async def call_hook(self, name, *args, **kwargs):
         """
         Call all hooks registered under `name` passing *args and **kwargs.
         Args:
@@ -508,9 +512,9 @@ class Middleware(object):
         for hook in self.__hooks[name]:
             try:
                 if hook['sync']:
-                    hook['method'](*args, **kwargs)
+                    await hook['method'](*args, **kwargs)
                 else:
-                    gevent.spawn(hook['method'], *args, **kwargs)
+                    asyncio.ensure_future(hook['method'], *args, **kwargs)
             except:
                 self.logger.error('Failed to run hook {}:{}(*{}, **{})'.format(name, hook['method'], args, kwargs), exc_info=True)
 
@@ -536,15 +540,18 @@ class Middleware(object):
     def get_jobs(self):
         return self.__jobs
 
-    def threaded(self, method, *args, **kwargs):
+    async def threaded(self, method, *args, **kwargs):
         """
-        Runs method in a native thread using gevent.ThreadPool.
+        Runs method in a native thread using concurrent.futures.ThreadPool.
         This prevents a CPU intensive or non-greenlet friendly method
         to block the event loop indefinitely.
         """
-        return self.__threadpool.apply(method, args, kwargs)
+        loop = asyncio.get_event_loop()
+        task = loop.run_in_executor(self.__threadpool, method, *args, **kwargs)
+        await task
+        return task.result()
 
-    def _call(self, name, methodobj, params, app=None):
+    async def _call(self, name, methodobj, params, app=None):
 
         args = []
         if hasattr(methodobj, '_pass_app'):
@@ -566,24 +573,59 @@ class Middleware(object):
         if job:
             return job
         else:
-            return methodobj(*args)
+            if asyncio.iscoroutinefunction(methodobj):
+                return await methodobj(*args)
+            else:
+                return await self.threaded(methodobj, *args)
 
-    def call_method(self, app, message):
+    def _method_lookup(self, name):
+        if '.' not in name:
+            raise CallError('Invalid method name', errno.EBADMSG)
+        try:
+            service, method_name = name.rsplit('.', 1)
+            methodobj = getattr(self.get_service(service), method_name)
+        except AttributeError:
+            raise CallError(f'Method "{method_name}" not found in "{service}"', errno.ENOENT)
+        return methodobj
+
+    async def call_method(self, app, message):
         """Call method from websocket"""
         params = message.get('params') or []
-        service, method_name = message['method'].rsplit('.', 1)
-        methodobj = getattr(self.get_service(service), method_name)
+        methodobj = self._method_lookup(message['method'])
 
         if not app.authenticated and not hasattr(methodobj, '_no_auth_required'):
-            app.send_error(message, 'Not authenticated')
+            app.send_error(message, errno.EACCES, 'Not authenticated')
             return
 
-        return self._call(message['method'], methodobj, params, app=app)
+        return await self._call(message['method'], methodobj, params, app=app)
 
-    def call(self, name, *params):
-        service, method = name.rsplit('.', 1)
-        methodobj = getattr(self.get_service(service), method)
-        return self._call(name, methodobj, params)
+    async def call(self, name, *params):
+        methodobj = self._method_lookup(name)
+        return await self._call(name, methodobj, params)
+
+    def call_sync(self, name, *params):
+        """
+        Synchronous method call to be used from another thread.
+        """
+        if threading.get_ident() == self.__thread_id:
+            raise RuntimeError('You cannot call_sync from main thread')
+
+        methodobj = self._method_lookup(name)
+        fut = asyncio.run_coroutine_threadsafe(self._call(name, methodobj, params), self.__loop)
+        event = threading.Event()
+
+        def done(_):
+            event.set()
+
+        fut.add_done_callback(done)
+        event.wait()
+        return fut.result()
+
+    def event_subscribe(self, name, handler):
+        """
+        Internal way for middleware/plugins to subscribe to events.
+        """
+        self.__event_subs[name].append(handler)
 
     def send_event(self, name, event_type, **kwargs):
         assert event_type in ('ADDED', 'CHANGED', 'REMOVED')
@@ -593,84 +635,87 @@ class Middleware(object):
             except:
                 self.logger.warn('Failed to send event {} to {}'.format(name, sessionid), exc_info=True)
 
+        # Send event also for internally subscribed plugins
+        for handler in self.__event_subs.get(name, []):
+            asyncio.ensure_future(handler(self, event_type, kwargs))
+
     def pdb(self):
         import pdb
         pdb.set_trace()
 
-    def green_monitor(self):
-        """
-        Start point method for setting up greenlet trace for finding
-        out blocked green threads.
-        """
-        self._green_hub = gevent.hub.get_hub()
-        self._green_active = None
-        self._green_counter = 0
-        greenlet.settrace(self._green_callback)
-        monkey.get_original('_thread', 'start_new_thread')(self._green_monitor_thread, ())
-        self._green_main_threadid = monkey.get_original('_thread', 'get_ident')()
+    async def ws_handler(self, request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
 
-    def _green_callback(self, event, args):
-        """
-        This method is called for several events in the greenlet.
-        We use this to keep track of how many switches have happened.
-        """
-        if event == 'switch':
-            origin, target = args
-            self._green_active = target
-            self._green_counter += 1
+        connection = Application(self, request, ws)
+        connection.on_open()
 
-    def _green_monitor_thread(self):
-        sleep = monkey.get_original('time', 'sleep')
+        async for msg in ws:
+            x = json.loads(msg.data)
+            try:
+                await connection.on_message(x)
+            except Exception as e:
+                await ws.close(message=str(e).encode('utf-8'))
+
+        connection.on_close()
+        return ws
+
+    def _loop_monitor_thread(self):
+        """
+        Thread responsible for checking current tasks that are taking too long
+        to finish and printing the stack.
+
+        DISCLAIMER/TODO: This is not free of race condition so it may show
+        false positives.
+        """
+        last = None
         while True:
-            # Check every 2 seconds for blocked green threads.
-            # This could be a knob in the future.
-            sleep(2)
-            # If there have been no greenlet switches since last time we
-            # checked it means we are likely stuck in the same green thread
-            # for more time than we would like to!
-            if self._green_counter == 0:
-                active = self._green_active
-                # greenlet hub is OK since its the thread waiting for IO.
-                if active not in (None, self._green_hub):
-                    frame = sys._current_frames()[self._green_main_threadid]
-                    stack = traceback.format_stack(frame)
-                    err_log = ["Green thread seems blocked:\n"] + stack
-                    self.logger.warn(''.join(err_log))
-
-            # A race condition may happen here but its fairly rare.
-            self._green_counter = 0
+            time.sleep(2)
+            current = asyncio.Task.current_task(loop=self.__loop)
+            if current is None:
+                last = None
+                continue
+            if last == current:
+                frame = sys._current_frames()[self.__thread_id]
+                stack = traceback.format_stack(frame, limit=10)
+                self.logger.warn(''.join(['Task seems blocked:'] + stack))
+            last = current
 
     def run(self):
-        self.green_monitor()
+        self.loop = self.__loop = asyncio.get_event_loop()
 
-        gevent.signal(signal.SIGTERM, self.kill)
-        gevent.signal(signal.SIGUSR1, self.pdb)
+        if self.loop_monitor:
+            self.__loop.set_debug(True)
+            #loop.slow_callback_duration(0.2)
+            t = threading.Thread(target=self._loop_monitor_thread)
+            t.setDaemon(True)
+            t.start()
 
-        Application.middleware = self
-        wsserver = WebSocketServer(('127.0.0.1', 6000), Resource(OrderedDict([
-            ('/websocket', Application),
-        ])))
+        self.__loop.add_signal_handler(signal.SIGTERM, self.kill)
+        self.__loop.add_signal_handler(signal.SIGUSR1, self.pdb)
 
-        restful_api = RESTfulAPI(self)
+        app = web.Application(loop=self.__loop)
+        app.router.add_route('GET', '/websocket', self.ws_handler)
 
-        apidocs_app.middleware = self
-        apidocsserver = WSGIServer(('127.0.0.1', 8001), apidocs_app)
-        restserver = WSGIServer(('127.0.0.1', 8002), restful_api.get_app())
-        fileserver = WSGIServer(('127.0.0.1', 8003), FileApplication(self))
+        app.router.add_route("*", "/api/docs{path_info:.*}", WSGIHandler(apidocs_app))
 
-        self.__server_threads = [
-            gevent.spawn(wsserver.serve_forever),
-            gevent.spawn(apidocsserver.serve_forever),
-            gevent.spawn(restserver.serve_forever),
-            gevent.spawn(fileserver.serve_forever),
-            gevent.spawn(self.__jobs.run),
-        ]
+        fileapp = FileApplication(self)
+        app.router.add_route('*', '/_download{path_info:.*}', fileapp.download)
+        app.router.add_route('*', '/_upload{path_info:.*}', fileapp.upload)
+
+        restful_api = RESTfulAPI(self, app)
+        self.__loop.run_until_complete(
+            asyncio.ensure_future(restful_api.register_resources())
+        )
+        asyncio.ensure_future(self.__jobs.run())
+
         self.logger.debug('Accepting connections')
-        gevent.joinall(self.__server_threads)
+        web.run_app(app, host='0.0.0.0', port=6000, access_log=None)
+        self.__loop.run_forever()
 
     def kill(self):
         self.logger.info('Killall server threads')
-        gevent.killall(self.__server_threads)
+        asyncio.get_event_loop().stop()
         sys.exit(0)
 
 
@@ -690,6 +735,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('restart', nargs='?')
     parser.add_argument('--foreground', '-f', action='store_true')
+    parser.add_argument('--disable-loop-monitor', '-L', action='store_true')
+    parser.add_argument('--plugins-dirs', '-p', action='append')
     parser.add_argument('--debug-level', default='DEBUG', choices=[
         'DEBUG',
         'INFO',
@@ -737,7 +784,10 @@ def main():
     # Workaround to tell django to not set up logging on its own
     os.environ['MIDDLEWARED'] = str(os.getpid())
 
-    Middleware().run()
+    Middleware(
+        loop_monitor=not args.disable_loop_monitor,
+        plugins_dirs=args.plugins_dirs,
+    ).run()
     if not args.foreground:
         daemonc.close()
 

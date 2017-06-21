@@ -1,11 +1,14 @@
+import asyncio
 import copy
+import errno
 
 
 class Error(Exception):
 
-    def __init__(self, attribute, errmsg):
+    def __init__(self, attribute, errmsg, errno=errno.EINVAL):
         self.attribute = attribute
         self.errmsg = errmsg
+        self.errno = errno
 
     def __str__(self):
         return '[{0}] {1}'.format(self.attribute, self.errmsg)
@@ -43,7 +46,7 @@ class Attribute(object):
     def clean(self, value):
         return value
 
-    def to_json_schema(self):
+    def to_json_schema(self, parent=None):
         """This method should return the json-schema v4 equivalent for the
         given attribute.
         """
@@ -68,9 +71,10 @@ class Attribute(object):
             middleware.add_schema(self)
         return self
 
+
 class Any(Attribute):
 
-    def to_json_schema(self):
+    def to_json_schema(self, parent=None):
         return {'type': 'any'}
 
 
@@ -84,8 +88,10 @@ class Str(EnumMixin, Attribute):
             raise Error(self.name, 'Not a string')
         return value
 
-    def to_json_schema(self):
-        schema = {'title': self.verbose}
+    def to_json_schema(self, parent=None):
+        schema = {}
+        if not parent:
+            schema['title'] = self.verbose
         if not self.required:
             schema['type'] = ['string', 'null']
         else:
@@ -109,11 +115,13 @@ class Bool(Attribute):
             raise Error(self.name, 'Not a boolean')
         return value
 
-    def to_json_schema(self):
-        return {
+    def to_json_schema(self, parent=None):
+        schema = {
             'type': ['boolean', 'null'] if not self.required else 'boolean',
-            'title': self.verbose,
         }
+        if not parent:
+            schema['title'] = self.verbose
+        return schema
 
 
 class Int(Attribute):
@@ -125,11 +133,13 @@ class Int(Attribute):
             raise Error(self.name, 'Not an integer')
         return value
 
-    def to_json_schema(self):
-        return {
+    def to_json_schema(self, parent=None):
+        schema = {
             'type': ['integer', 'null'] if not self.required else 'integer',
-            'title': self.verbose,
         }
+        if not parent:
+            schema['title'] = self.verbose
+        return schema
 
 
 class List(EnumMixin, Attribute):
@@ -159,8 +169,10 @@ class List(EnumMixin, Attribute):
                     raise Error(self.name, 'Item#{0} is not valid per list types: {1}'.format(index, found))
         return value
 
-    def to_json_schema(self):
-        schema = {'type': 'array', 'title': self.verbose}
+    def to_json_schema(self, parent=None):
+        schema = {'type': 'array'}
+        if not parent:
+            schema['title'] = self.verbose
         if self.required:
             schema['type'] = ['array', 'null']
         else:
@@ -220,15 +232,16 @@ class Dict(Attribute):
 
         return data
 
-    def to_json_schema(self):
+    def to_json_schema(self, parent=None):
         schema = {
             'type': 'object',
-            'title': self.verbose,
             'properties': {},
             'additionalProperties': self.additional_attrs,
         }
+        if not parent:
+            schema['title'] = self.verbose
         for name, attr in list(self.attrs.items()):
-            schema['properties'][name] = attr.to_json_schema()
+            schema['properties'][name] = attr.to_json_schema(parent=self)
         return schema
 
     def resolve(self, middleware):
@@ -253,10 +266,11 @@ class Ref(object):
 
 class Patch(object):
 
-    def __init__(self, name, newname, *patches):
+    def __init__(self, name, newname, *patches, register=False):
         self.name = name
         self.newname = newname
         self.patches = patches
+        self.register = register
 
     def convert(self, spec):
         t = spec.pop('type')
@@ -320,7 +334,7 @@ def accepts(*schema):
             args_index += 1
         assert len(schema) == f.__code__.co_argcount - args_index  # -1 for self
 
-        def nf(*args, **kwargs):
+        def clean_args(args, kwargs):
             args = list(args)
 
             # Iterate over positional args first, excluding self
@@ -335,7 +349,17 @@ def accepts(*schema):
                 if kwarg in kwargs:
                     kwargs[kwarg] = nf.accepts[i].clean(kwargs[kwarg])
                 i += 1
-            return f(*args, **kwargs)
+            return args, kwargs
+
+        if asyncio.iscoroutinefunction(f):
+            async def nf(*args, **kwargs):
+                args, kwargs = clean_args(args, kwargs)
+                return await f(*args, **kwargs)
+        else:
+            def nf(*args, **kwargs):
+                args, kwargs = clean_args(args, kwargs)
+                return f(*args, **kwargs)
+
         nf.__name__ = f.__name__
         nf.__doc__ = f.__doc__
         # Copy private attrs to new function so decorators can work on top of it

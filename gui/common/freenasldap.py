@@ -45,6 +45,7 @@ from freenasUI.common.pipesubr import (
     run
 )
 
+from freenasUI.common.freenassysctl import freenas_sysctl as _fs
 from freenasUI.common.ssl import get_certificateauthority_path
 from freenasUI.common.system import (
     get_freenas_var,
@@ -727,15 +728,14 @@ class FreeNAS_LDAP_Base(FreeNAS_LDAP_Directory):
             if krb_principal and krb_principal.upper() == principal.upper():
                 return True
 
-            (fd, tmpfile) = tempfile.mkstemp(dir="/tmp")
-            os.fchmod(fd, 0o600)
-            os.write(fd, self.bindpw)
-            os.close(fd)
+            f = tempfile.NamedTemporaryFile(mode='w+', dir="/tmp")
+            os.chmod(f.name, 0o600)
+            f.write(self.bindpw)
 
             args = [
                 "/usr/bin/kinit",
                 "--renewable",
-                "--password-file=%s" % tmpfile,
+                "--password-file=%s" % f.name,
                 "%s" % principal
             ]
 
@@ -744,7 +744,7 @@ class FreeNAS_LDAP_Base(FreeNAS_LDAP_Directory):
                 kinit = True
                 res = True
 
-            os.unlink(tmpfile)
+            f.close()
 
         if kinit:
             i = 0
@@ -1047,7 +1047,7 @@ class FreeNAS_ActiveDirectory_Base(object):
 
         if len(srv_hosts) == 1:
             for s in srv_hosts:
-                host = s.target.to_text(True).decode('utf8')
+                host = s.target.to_text(True)
                 port = int(s.port)
                 return (host, port)
 
@@ -1059,7 +1059,7 @@ class FreeNAS_ActiveDirectory_Base(object):
             latencies[host] += duration
 
         for srv_host in srv_hosts:
-            host = srv_host.target.to_text(True).decode('utf8')
+            host = srv_host.target.to_text(True)
             port = int(srv_host.port)
 
             try:
@@ -1080,7 +1080,7 @@ class FreeNAS_ActiveDirectory_Base(object):
         latency_list = sorted(iter(latencies.items()), key=lambda a_b: (a_b[1], a_b[0]))
         if latency_list:
             for s in srv_hosts:
-                host = s.target.to_text(True).decode('utf8')
+                host = s.target.to_text(True)
                 port = int(s.port)
                 if host.lower() == latency_list[0][0].lower():
                     best_host = (host, port)
@@ -1145,23 +1145,29 @@ class FreeNAS_ActiveDirectory_Base(object):
         if not host:
             return srv_records
 
+        log.debug(
+            "FreeNAS_ActiveDirectory_Base.get_SRV_records: "
+            "looking up SRV records for %s",
+            host
+        )
+
+        r = resolver.Resolver()
+        r.timeout = _fs().directoryservice.activedirectory.dns.timeout
+        r.lifetime = _fs().directoryservice.activedirectory.dns.lifetime
+
         try:
-            log.debug(
-                "FreeNAS_ActiveDirectory_Base.get_SRV_records: "
-                "looking up SRV records for %s",
-                host
-            )
-            answers = resolver.query(host, 'SRV')
+
+            answers = r.query(host, 'SRV')
             srv_records = sorted(
                 answers,
                 key=lambda a: (int(a.priority), int(a.weight))
             )
 
-        except:
+        except Exception as e:
             log.debug(
                 "FreeNAS_ActiveDirectory_Base.get_SRV_records: "
-                "no SRV records for %s found, fail!",
-                host
+                "no SRV records for %s found: %s",
+                host, e
             )
             log_traceback(log=log)
             srv_records = []
