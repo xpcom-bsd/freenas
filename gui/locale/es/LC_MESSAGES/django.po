@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:07-0700\n"
-"PO-Revision-Date: 2017-06-22 20:05+0000\n"
+"PO-Revision-Date: 2017-06-22 20:57+0000\n"
 "Last-Translator: Zackary Welch <zwelch@ixsystems.com>\n"
 "Language-Team: Spanish "
 "<http://weblate.trueos.org/projects/freenas/django/es/>\n"
@@ -5678,10 +5678,13 @@ msgid_plural ""
 "        "
 msgstr[0] ""
 "\n"
-"Esto borrara todos los archivos del conjunto de datos \n"
+"        Esto borrara todos los archivos del conjunto de datos\n"
+"        "
 msgstr[1] ""
 "\n"
-"Esto borrara todos los archivos del conjunto de datos y su descendientes \n"
+"        Esto borrara todos los archivos del conjunto de datos y su "
+"descendientes\n"
+"        "
 
 #: templates/storage/dataset_edit.html:2
 msgid "Edit Dataset"
@@ -7378,11 +7381,12 @@ msgstr "Nombre del Dominio en formato antiguo (Ej: EXAMPLE)"
 
 #: services/models.py:2075
 msgid "DNS Backend"
-msgstr ""
+msgstr "DNS Backend"
 
 #: services/models.py:2076
+#, fuzzy
 msgid "DNS Backend, eg SAMBA_INTERNAL"
-msgstr ""
+msgstr "DNS Backend, p. ej. SAMBA_INTERNAL"
 
 #: services/models.py:2082
 msgid "DNS Forwarder"
@@ -7453,7 +7457,7 @@ msgstr ""
 
 #: sharing/models.py:297
 msgid "The specified group's permission are used by all clients"
-msgstr ""
+msgstr "La permisión del grupo especificado es usado por todos los clientes"
 
 #: storage/admin.py:130
 #, fuzzy
@@ -7472,15 +7476,15 @@ msgstr "Cambiar Contraseña"
 
 #: storage/admin.py:318
 msgid "Download Key"
-msgstr ""
+msgstr "Descargar Clave"
 
 #: storage/admin.py:330
 msgid "Add recovery key"
-msgstr ""
+msgstr "Añadir clave de recuperación"
 
 #: storage/admin.py:342
 msgid "Unlock"
-msgstr ""
+msgstr "Desbloquear"
 
 #: storage/admin.py:511
 #, fuzzy
@@ -7497,8 +7501,9 @@ msgid "Remote Hostname"
 msgstr "Nombre de host remoto"
 
 #: storage/forms.py:1090
+#, fuzzy
 msgid "No: Skip to import"
-msgstr ""
+msgstr "No: Saltar para importar"
 
 #: storage/forms.py:1093
 #, fuzzy
@@ -7531,10 +7536,12 @@ msgid ""
 "The default blocksize for volumes is 8 Kbytes. Any power of 2 from 512 bytes "
 "to 128 Kbytes is valid."
 msgstr ""
+"El tamaño predeterminado de los bloqueos para los volúmenes es 8 Kbytes. "
+"Cualquier múltiplo de 2 de 512 bytes a 128 KBytes es válido."
 
 #: storage/forms.py:1655
 msgid "Specify the size with IEC suffixes, e.g. 10 GiB"
-msgstr ""
+msgstr "Especificar el tamaño con sufijos de IEC, p. e.j. 10 GiB"
 
 #: storage/forms.py:1684
 #, fuzzy
@@ -7555,12 +7562,13 @@ msgid "Dedicated User Enabled"
 msgstr "Usuario Dedicado Habilitado"
 
 #: storage/forms.py:2022
+#, fuzzy
 msgid "If disabled then root will be used for replication."
-msgstr ""
+msgstr "Si deshabilitado root será utilizado para reproducción."
 
 #: storage/forms.py:2030
 msgid "Enable High Speed Ciphers"
-msgstr ""
+msgstr "Habilitar Cifras de Alta Velocidad"
 
 #: storage/forms.py:2237
 #, fuzzy
@@ -9689,8 +9697,9 @@ msgid "Are you sure you want to edit this?"
 msgstr "Está seguro que desea editar esto?"
 
 #: network/admin.py:61
+#, fuzzy
 msgid "This change will cause a failover event. Do you want to proceed?"
-msgstr "Este cambio provocara un evento failover. Desea continuar? "
+msgstr "Este cambio provocara un evento failover. ¿Desea continuar?"
 
 #: network/admin.py:63
 msgid "Network connectivity will be interrupted"
