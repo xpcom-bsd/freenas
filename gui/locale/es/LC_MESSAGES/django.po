@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:07-0700\n"
-"PO-Revision-Date: 2017-06-22 19:44+0000\n"
+"PO-Revision-Date: 2017-06-22 19:49+0000\n"
 "Last-Translator: Zackary Welch <zwelch@ixsystems.com>\n"
 "Language-Team: Spanish "
 "<http://weblate.trueos.org/projects/freenas/django/es/>\n"
@@ -753,9 +753,7 @@ msgstr "El usuario %s no es válido."
 #: freeadmin/forms.py:149
 #, python-format
 msgid "The group %s is not valid."
-msgstr ""
-"La salida de agrupaciones no puede ser parseada, está la agrupación "
-"importada?"
+msgstr "El grupo %s no es válido."
 
 #: freeadmin/forms.py:174
 msgid "The path must reside within a volume mount point"
