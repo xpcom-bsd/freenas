@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:07-0700\n"
-"PO-Revision-Date: 2017-06-22 19:51+0000\n"
+"PO-Revision-Date: 2017-06-22 19:52+0000\n"
 "Last-Translator: Zackary Welch <zwelch@ixsystems.com>\n"
 "Language-Team: Spanish "
 "<http://weblate.trueos.org/projects/freenas/django/es/>\n"
@@ -5378,7 +5378,7 @@ msgstr "Su nombre de usuario y contraseña no coinciden. Intentelo de nuevo"
 #: templates/registration/login.html:44
 #, python-format
 msgid "Welcome, %(username)s. Thanks for logging in."
-msgstr "Bienvenido, %(username). Gracias por logarse"
+msgstr "Bienvenido, %(username)s. Gracias por logarse"
 
 #, python-format
 #~ msgid "Welcome to %(sw_name)s&trade; %(sw_login_version)s"
@@ -7114,7 +7114,9 @@ msgstr "IPMI"
 msgid ""
 "Click here to find out what PBI's are!<a href='http://www.pcbsd.org/en"
 "/package-management/' onclick='window.open(this.href);return false;'>"
-msgstr "Click aquí para descubrir que son los PBI,s!"
+msgstr ""
+"Click aquí para descubrir que son los PBI's!<a href='http://www.pcbsd.org/en"
+"/package-management/' onclick='window.open(this.href);return false;'>"
 
 #: plugins/forms.py:100
 msgid "Plugin Jail"
