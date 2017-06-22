@@ -8,8 +8,8 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:07-0700\n"
-"PO-Revision-Date: 2017-04-06 17:46+0000\n"
-"Last-Translator: Johnn <johnn@globalworks.cat>\n"
+"PO-Revision-Date: 2017-06-22 19:44+0000\n"
+"Last-Translator: Zackary Welch <zwelch@ixsystems.com>\n"
 "Language-Team: Spanish "
 "<http://weblate.trueos.org/projects/freenas/django/es/>\n"
 "Language: es\n"
@@ -402,27 +402,27 @@ msgstr "Lectura-Escritura"
 #: choices.py:510 choices.py:511
 #, python-format
 msgid "%(minutes)s minutes"
-msgstr "%(minutos)s minutos"
+msgstr "%(minutes)s minutos"
 
 #: choices.py:512
 #, python-format
 msgid "%(hour)s hour"
-msgstr "%(hora)s hora"
+msgstr "%(hour)s hora"
 
 #: choices.py:513 choices.py:514 choices.py:515 choices.py:516 choices.py:517
 #, python-format
 msgid "%(hours)s hours"
-msgstr "%(horas)s horas"
+msgstr "%(hours)s horas"
 
 #: choices.py:518
 #, python-format
 msgid "%(day)s day"
-msgstr "%(día)s día"
+msgstr "%(day)s día"
 
 #: choices.py:519
 #, python-format
 msgid "%(week)s week"
-msgstr "%(semana)s semana"
+msgstr "%(week)s semana"
 
 #: choices.py:523
 msgid "Never - Check the device regardless of its power mode"
@@ -4425,8 +4425,8 @@ msgid ""
 "In order to use rsync over SSH you need a user<br />with a public key (DSA/"
 "ECDSA/RSA) set up in home dir."
 msgstr ""
-"Para poder usar Rsync sobre SSH se necesita un usuario con una clave publica "
-"(DSA/ECDSA/RSA configurada"
+"Para poder usar Rsync sobre SSH se necesita un usuario<br />con una clave "
+"publica (DSA/ECDSA/RSA configurada"
 
 #: system/forms.py:792 system/forms.py:810
 msgid "Quotes are not allowed"
@@ -4598,7 +4598,7 @@ msgstr "Avanzado"
 
 #: system/models.py:209
 msgid "From email"
-msgstr "Desde el correo de:"
+msgstr "Desde el correo"
 
 #: system/models.py:210
 msgid ""
@@ -6807,7 +6807,7 @@ msgstr "!datos"
 
 #: choices.py:697
 msgid "auth"
-msgstr "                  Autenticación                "
+msgstr "Autenticación"
 
 #: choices.py:698
 msgid "ctrl"
@@ -7902,8 +7902,9 @@ msgid "Invalid network: %s"
 msgstr "Red inválida: %s"
 
 #: freeadmin/navtree.py:576
+#, fuzzy
 msgid "Error unserializing %(url)s (%(error)s), data retrieved:"
-msgstr "Un error ha ocurrido mientras se comunicaba con %(url)s: %(error)s"
+msgstr "Error a deserializar %(url)s (%(error)s), datos recuperados:"
 
 #: jails/admin.py:75
 #: jails/forms.py:859
@@ -10486,7 +10487,7 @@ msgstr "Autenticación básica"
 
 #: choices.py:44
 msgid "Digest Authentication"
-msgstr "                  Autenticación                "
+msgstr "Autenticación"
 
 #: choices.py:799
 msgid "adex"
