@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:07-0700\n"
-"PO-Revision-Date: 2017-06-22 19:49+0000\n"
+"PO-Revision-Date: 2017-06-22 19:51+0000\n"
 "Last-Translator: Zackary Welch <zwelch@ixsystems.com>\n"
 "Language-Team: Spanish "
 "<http://weblate.trueos.org/projects/freenas/django/es/>\n"
@@ -1537,7 +1537,7 @@ msgstr "Descubrir Grupo Autorizador"
 #: services/forms.py:656
 #, python-format
 msgid "This value must be between %(start)d and %(end)d, inclusive."
-msgstr "Este valor debe estar entre %(start) y %(end), ambos inclusive."
+msgstr "Este valor debe estar entre %(start)d y %(end)d, inclusive."
 
 #: services/forms.py:669
 msgid ""
