@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:07-0700\n"
-"PO-Revision-Date: 2017-06-22 19:52+0000\n"
+"PO-Revision-Date: 2017-06-22 20:05+0000\n"
 "Last-Translator: Zackary Welch <zwelch@ixsystems.com>\n"
 "Language-Team: Spanish "
 "<http://weblate.trueos.org/projects/freenas/django/es/>\n"
@@ -12791,8 +12791,9 @@ msgstr "NetBIOS no puede ser el mismo que el primero."
 
 #: directoryservice/forms.py:540
 #: directoryservice/forms.py:545
+#, fuzzy
 msgid "The NetBIOS name cannot be the same as the workgroup name!"
-msgstr "El nombre NetBIOS no puede ser igual al del Grupo de Trabajo."
+msgstr "El nombre NetBIOS no puede ser igual al del Grupo de trabajo!"
 
 #: directoryservice/models.py:739
 #, fuzzy
