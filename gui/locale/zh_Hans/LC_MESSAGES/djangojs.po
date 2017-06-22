@@ -8,8 +8,8 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:10-0700\n"
-"PO-Revision-Date: 2017-03-07 08:29+0000\n"
-"Last-Translator: XY.Chen <chenxinyv@gmail.com>\n"
+"PO-Revision-Date: 2017-06-22 13:48+0000\n"
+"Last-Translator: Herald Yu <yuhr123@gmail.com>\n"
 "Language-Team: Simplified Chinese "
 "<http://weblate.trueos.org/projects/freenas/djangojs/zh_Hans/>\n"
 "Language: zh_Hans\n"
@@ -119,7 +119,6 @@ msgid "The cache could not be rebuilt: "
 msgstr "无法刷新缓存："
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:134
-#, fuzzy
 msgid "Shares"
 msgstr "共享"
 
@@ -290,7 +289,7 @@ msgstr "目录服务"
 #: freeadmin/static/lib/js/freeadmin.js:1772
 #: freeadmin/static/lib/js/freeadmin.js:1863
 msgid "Initial Wizard"
-msgstr "设置向导"
+msgstr "初始化向导"
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:68
 msgid "Share name"
@@ -340,7 +339,7 @@ msgstr "向导"
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:242
 msgid "Paswords do not match."
-msgstr ""
+msgstr "密码不匹配。"
 
 #: freeadmin/static/lib/js/freeadmin.js:374
 msgid "Warning!"
@@ -362,7 +361,7 @@ msgstr "手动安装"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:82
 msgid "Check For Updates"
-msgstr ""
+msgstr "检查更新"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:86
 msgid "Apply Pending Updates"
@@ -467,8 +466,9 @@ msgid ""
 msgstr ""
 
 #: freeadmin/static/lib/js/freeadmin.js:1171
+#, fuzzy
 msgid "are not working.<br /><br />"
-msgstr ""
+msgstr "未工作。<br /><br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1172
 msgid ""
@@ -518,16 +518,15 @@ msgstr "提交工单"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:377
 msgid "Uploading attachments from host to the ticket"
-msgstr ""
+msgstr "正在为工单上传本地附件"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:86
 msgid "Train Descriptions"
-msgstr ""
+msgstr "Train 描述"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:88
-#, fuzzy
 msgid "Loading"
-msgstr "正在载入"
+msgstr "载入中"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:89
 msgid "Automatically check for updates"
@@ -535,7 +534,7 @@ msgstr "自动检查更新"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:90
 msgid "Current Train"
-msgstr ""
+msgstr "当前 Train"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:91
 msgid "Update Server"
@@ -547,25 +546,25 @@ msgstr "挂起的更新"
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:185
 msgid "vCenter Plugin Configuration"
-msgstr ""
+msgstr "vCenter 插件配置"
 
 #: freeadmin/static/lib/js/freeadmin.js:1343
 msgid "Decreasing WebGUI https security!"
-msgstr ""
+msgstr "降低 WebGUI https 安全性!"
 
 #: freeadmin/static/lib/js/freeadmin.js:1348
 msgid ""
 "<font color='red'>Warning: Selecting this reduces your https security.<br /><"
 "br />"
-msgstr ""
+msgstr "<font color='red'>警告：选择此项会削弱 https 的安全性。<br /><br />"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:117
 msgid "Password"
-msgstr ""
+msgstr "密码"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:118
 msgid "Name"
-msgstr ""
+msgstr "姓名"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:119
 msgid "E-mail"
@@ -573,36 +572,36 @@ msgstr ""
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:120
 msgid "Phone"
-msgstr ""
+msgstr "电话"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:121
 msgid "Type"
-msgstr ""
+msgstr "类型"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:122
 msgid "Category"
-msgstr ""
+msgstr "分类"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:123
 msgid "Environment"
-msgstr ""
+msgstr "环境"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:124
+#, fuzzy
 msgid "Criticality"
-msgstr ""
+msgstr "临界"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:126
 msgid "Subject"
-msgstr ""
+msgstr "主题"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:127
-#, fuzzy
 msgid "Description"
-msgstr "加密"
+msgstr "描述"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:128
 msgid "Attachments"
-msgstr ""
+msgstr "附件"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:161
 msgid ""
@@ -625,7 +624,7 @@ msgstr ""
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:176
 msgid "OK"
-msgstr ""
+msgstr "好的"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:226
 msgid ""
@@ -635,4 +634,4 @@ msgstr ""
 
 #: freeadmin/static/lib/js/freeadmin.js:359
 msgid "Ok"
-msgstr ""
+msgstr "好的"
