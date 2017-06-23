@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:10-0700\n"
-"PO-Revision-Date: 2017-06-20 15:59+0000\n"
+"PO-Revision-Date: 2017-06-23 07:12+0000\n"
 "Last-Translator: Boguslaw Sobczak <rudzik@consoft.com.pl>\n"
 "Language-Team: Polish "
 "<http://weblate.trueos.org/projects/freenas/djangojs/pl/>\n"
@@ -51,7 +51,7 @@ msgstr "Magazyn"
 #: freeadmin/static/lib/js/freeadmin.js:500
 #: freeadmin/static/lib/js/freeadmin.js:523
 msgid "Some error occurred"
-msgstr "Wystąpił błąd!"
+msgstr "Wystąpił błąd"
 
 #~ msgid "Edit"
 #~ msgstr "Edytuj"
@@ -113,7 +113,7 @@ msgstr "Udostępnienia"
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:250
 msgid "Plugins"
-msgstr "Dodatki"
+msgstr "Pluginy"
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:398
 msgid "Support"
@@ -145,7 +145,7 @@ msgstr "Dodaj wolumen"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1015
 msgid "Existing data will be cleared"
-msgstr "Istniejące dane będą wyczyszczone"
+msgstr "Istniejące dane zostaną usunięte"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1063
 msgid "Volume Name"
@@ -182,7 +182,7 @@ msgstr "Pamięć podręczna nie może zostać przebudowana: "
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:213
 msgid "Jails"
-msgstr "Cela"
+msgstr "Klatki"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:335
 msgid "Disk size mismatch"
@@ -196,6 +196,10 @@ msgid ""
 "href='http://doc.freenas.org/index.php/Volumes#ZFS_Volume_Manager' "
 "target='_blank'>documentation</a>."
 msgstr ""
+"Twoja konfiguracja jest optymalna!<br /><br />Oznacza to, że będziesz mieć "
+"najlepszą wydajność dla tej liczby dysków i typów dysków<br /><br />Więcej "
+"informacji można znaleźć w <a href='http://doc.freenas.org/index.php/Volumes#"
+"ZFS_Volume_Manager' target='_blank'>dokumentacji</a>."
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:525
 msgid ""
@@ -205,6 +209,11 @@ msgid ""
 "href='http://doc.freenas.org/index.php/Volumes#ZFS_Volume_Manager' "
 "target='_blank'>documentation</a>."
 msgstr ""
+"Twoja konfiguracja nie jest optymalna!<br /><br />Oznacza to, że ta liczba "
+"dysków nie zapewnia najlepszej wydajności przy wyborze takiego typu pracy "
+"grupy dysków.<br /><br />Więcej informacji można znaleźć w <a "
+"href='http://doc.freenas.org/index.php/Volumes#ZFS_Volume_Manager' "
+"target='_blank'>dokumentacji</a>."
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:666
 msgid "Capacity"
@@ -234,7 +243,7 @@ msgstr "Szyfrowanie"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1072
 msgid "Volume layout"
-msgstr "Położenie wolumenu"
+msgstr "Rozmieszenie wolumenów"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1073
 msgid "Estimated capacity"
@@ -263,221 +272,232 @@ msgid "Confirm"
 msgstr "Potwierdź"
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:49
-#, fuzzy
 msgid "System"
-msgstr "Ostrzeżenie systemu"
+msgstr "System"
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:94
 msgid "Tasks"
-msgstr ""
+msgstr "Zadania"
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:92
-#, fuzzy
 msgid "Network"
-msgstr "Ustawienia sieciowe"
+msgstr "Sieć"
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:182
-#, fuzzy
 msgid "Sharing"
-msgstr "Udostępnienia"
+msgstr "Udostępnianie"
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:521
 msgid "Directory Service"
-msgstr ""
+msgstr "Usługa katalogowa"
 
 #: freeadmin/static/lib/js/freeadmin.js:1772
 #: freeadmin/static/lib/js/freeadmin.js:1863
 msgid "Initial Wizard"
-msgstr ""
+msgstr "Kreator początkowy"
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:68
-#, fuzzy
 msgid "Share name"
-msgstr "Udostępnienia"
+msgstr "Nazwa udziału"
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:74
 msgid ""
 "This field may only contain alphanumeric and the following characters: \"_\""
 ", \"-\", \".\"."
 msgstr ""
+"To pole może zawierać tylko znaki alfanumeryczne oraz znaki: \"_\", \"-\", \""
+".\"."
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:129
 msgid "Specify the size using B, K, M, G, T prefixes."
-msgstr ""
+msgstr "Określ rozmiar za pomocą przedrostków B, K, M, G, T."
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:133
 msgid "Add"
-msgstr ""
+msgstr "Dodaj"
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:140
 msgid "Delete"
-msgstr ""
+msgstr "Usuń"
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:153
 msgid "Update"
-msgstr ""
+msgstr "Zaktualizuj"
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:184
 msgid "Ownership"
-msgstr ""
+msgstr "Prawo własności"
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:210
 msgid "This user does not exist."
-msgstr ""
+msgstr "Ten użytkownik nie istnieje."
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:246
 msgid "This group does not exist."
-msgstr ""
+msgstr "Ta grupa nie istnieje."
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:278
 msgid "Return"
-msgstr ""
+msgstr "Powrót"
 
 #: freeadmin/static/lib/js/freeadmin.js:1772
 msgid "Wizard"
-msgstr ""
+msgstr "Kreator"
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:242
 msgid "Paswords do not match."
-msgstr ""
+msgstr "Hasła nie pasują do siebie."
 
 #: freeadmin/static/lib/js/freeadmin.js:374
 msgid "Warning!"
-msgstr ""
+msgstr "Ostrzeżenie!"
 
 #: freeadmin/static/lib/js/freeadmin.js:376
 msgid ""
 "This option DISABLES ENCRYPTION for replication tasks and should ONLY be "
 "used on a secure LAN!"
 msgstr ""
+"Ta opcja WYŁĄCZA SZYFROWANIE w zadaniach replikacji i powinna być używana "
+"TYLKO w bezpiecznym LAN-ie!"
 
 #: freeadmin/static/lib/js/freeadmin.js:376
 msgid "Are you sure you want to do this?"
-msgstr ""
+msgstr "Czy na pewno chcesz to zrobić?"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1190
 msgid "Manual Setup"
-msgstr ""
+msgstr "Ręczna konfiguracja"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:82
 msgid "Check For Updates"
-msgstr ""
+msgstr "Sprawdź aktualizacje"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:86
 msgid "Apply Pending Updates"
-msgstr ""
+msgstr "Zastosuj oczekujące aktualizacje"
 
 #: freeadmin/static/lib/js/freeadmin.js:1287
 msgid "Hostname cannot be blank."
-msgstr ""
+msgstr "Nazwa hosta nie może być pusta."
 
 #: freeadmin/static/lib/js/freeadmin.js:1290
 msgid "Username cannot be blank."
-msgstr ""
+msgstr "Nazwa użytkownika nie może być pusta."
 
 #: freeadmin/static/lib/js/freeadmin.js:1293
 msgid "Password cannot be blank."
-msgstr ""
+msgstr "Hasło nie może być puste."
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:79
 #: freeadmin/static/lib/js/freeadmin/Update.js:81
 msgid "Manual Update"
-msgstr ""
+msgstr "Aktualizacja ręczna"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:88
 #: freeadmin/static/lib/js/freeadmin/Update.js:90
 msgid "Check Now"
-msgstr ""
+msgstr "Sprawdź teraz"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:142
 msgid "Yes"
-msgstr ""
+msgstr "Tak"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:151
 msgid "No"
-msgstr ""
+msgstr "Nie"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:166
 msgid "Loading..."
-msgstr ""
+msgstr "Ładowanie..."
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:167
 msgid "No pending updates have been found."
-msgstr ""
+msgstr "Nie znaleziono oczekujących aktualizacji."
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:104
 #: freeadmin/static/lib/js/freeadmin/Update.js:106
 msgid "Verify Install"
-msgstr ""
+msgstr "Sprawdź instalację"
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:245
 msgid "Passwords do not match."
-msgstr ""
+msgstr "Hasła nie pasują do siebie."
 
 #: freeadmin/static/lib/js/freeadmin.js:260
 msgid "Restarting WebGUI"
-msgstr ""
+msgstr "Restartowanie WebGUI"
 
 #: freeadmin/static/lib/js/freeadmin.js:1157
 msgid "Active Directory IDMAP change!"
-msgstr ""
+msgstr "Zmiana IDMAP Active Directory!"
 
 #: freeadmin/static/lib/js/freeadmin.js:1162
 msgid ""
 "<font color='red'>STOP</font>: Do you know what you are doing?<br /><br />"
-msgstr ""
+msgstr "<font color='red'>STOP</font>: Czy wiesz, co robisz?<br /><br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1163
 msgid ""
 "The idmap_ad plugin provides a way for Winbind to read id mappings from<br />"
-msgstr ""
+msgstr "Plugin idmap_ad umożliwia Winbindowi odczyt mapowań id<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1164
 msgid "an AD server that uses RFC2307/SFU schema extensions. This module<br />"
 msgstr ""
+"z serwera AD, który używa rozszerzeń schematu RFC2307/SFU. Moduł ten<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1165
 msgid ""
 "implements only the \"idmap\" API, and is READONLY. Mappings must be<br />"
 msgstr ""
+"implementuje tylko API \"idmap\" i jest TYLKO DO ODCZYTU. Mapowanie musi być<"
+"br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1166
 msgid "provided in advance by the administrator by adding the uidNumber<br />"
 msgstr ""
+"dostarczone z wyprzedzeniem przez administratora przez dodanie atrybutów "
+"uidNumber<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1167
 msgid ""
 "attributes for users and gidNumber attributes for groups in the AD.<br />"
-msgstr ""
+msgstr "dla użytkowników i atrybutów gidNumber dla grup w AD.<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1168
 msgid ""
 "Winbind will only map users that have a uidNumber and whose primary<br />"
 msgstr ""
+"Winbind będzie mapować tylko użytkowników, którzy mają uidNumber i której "
+"główna<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1169
 msgid ""
 "group have a gidNumber attribute set. It is however recommended that<br />"
-msgstr ""
+msgstr "grupa ma zestaw atrybutów gidNumber. Zaleca się jednak aby<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1170
 msgid ""
 "all groups in use have gidNumber attributes assigned, otherwise they<br />"
 msgstr ""
+"wszystkie używane grupy miały przypisane atrybuty gidNumber, w przeciwnym "
+"razie<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1171
 msgid "are not working.<br /><br />"
-msgstr ""
+msgstr "nie działają.<br /><br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1172
 msgid ""
 "<font color='red'>STOP</font>: If your Active Directory is not configured "
 "for this, it will not work.<br><br>"
 msgstr ""
+"<font color='red'>STOP</font>: Jeśli usługa Active Directory nie jest "
+"odpowiednio skonfigurowana, to nie będzie działać.<br><br>"
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:512
 msgid "Documentation"
-msgstr ""
+msgstr "Dokumentacja"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:115
 msgid "Username"
@@ -485,77 +505,79 @@ msgstr "Nazwa użytkownika"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:116
 msgid "If you do not have an account, please"
-msgstr ""
+msgstr "Jeśli nie masz konta, proszę"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:116
 msgid "register"
-msgstr ""
+msgstr "zarejestruj"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:117
 msgid "Attach Debug Info"
-msgstr ""
+msgstr "Dołącz informacje o debugowaniu"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:226
 msgid "Submit"
-msgstr ""
+msgstr "Zgłoś"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:326
 msgid "This field is required."
-msgstr ""
+msgstr "Te pole jest wymagane."
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:361
 msgid "Uploading attachments to host"
-msgstr ""
+msgstr "Przesyłanie załączników do hosta"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:367
 msgid "Generating debug info"
-msgstr ""
+msgstr "Generowanie informacji o debugowaniu"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:372
 msgid "Submitting ticket"
-msgstr ""
+msgstr "Zgłoszenie sprawy"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:377
 msgid "Uploading attachments from host to the ticket"
-msgstr ""
+msgstr "Przesyłanie załączników z hosta do zgłoszonej sprawy"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:86
 msgid "Train Descriptions"
-msgstr ""
+msgstr "Opis testowej instalki"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:88
 msgid "Loading"
-msgstr ""
+msgstr "Ładowanie"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:89
 msgid "Automatically check for updates"
-msgstr ""
+msgstr "Automatycznie sprawdzaj aktualizacje"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:90
 msgid "Current Train"
-msgstr ""
+msgstr "Obecna testowa instalka"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:91
 msgid "Update Server"
-msgstr ""
+msgstr "Zaktualizuj serwer"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:92
 msgid "Pending Updates"
-msgstr ""
+msgstr "Oczekujące aktualizacje"
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:185
 msgid "vCenter Plugin Configuration"
-msgstr ""
+msgstr "Konfiguracja pluginu vCenter"
 
 #: freeadmin/static/lib/js/freeadmin.js:1343
 msgid "Decreasing WebGUI https security!"
-msgstr ""
+msgstr "Zmniejszanie bezpieczeństwa WebGUI w https!"
 
 #: freeadmin/static/lib/js/freeadmin.js:1348
 msgid ""
 "<font color='red'>Warning: Selecting this reduces your https security.<br /><"
 "br />"
 msgstr ""
+"<font color='red'>Ostrzeżenie: ten wybór zmniejsza bezpieczeństwo protokołu "
+"https.<br /><br />"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:117
 msgid "Password"
@@ -602,44 +624,41 @@ msgid "Attachments"
 msgstr "Załączniki"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:161
-#, fuzzy
 msgid ""
 "You're not allowed to change away from the nightly train, it is considered a "
 "downgrade."
 msgstr ""
-"Nie możesz wycofać się z wczesnej wersji, uważane jest to za degradację."
+"Nie dozwolone jest odejście od wczesnej wersji testowej, uważane jest to za "
+"degradację."
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:161
 #: freeadmin/static/lib/js/freeadmin/Update.js:162
-#, fuzzy
 msgid ""
 "If you have an existing boot environment that uses that train, boot into it "
 "in order to upgrade that train."
 msgstr ""
-"Jeśli masz już środowisko ładowania tej wersji systemu, uruchom je w celu "
-"jego aktualizacji."
+"Jeśli masz już środowisko ładowania tej wersji testowej systemu, uruchom je "
+"w celu jego aktualizacji."
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:162
-#, fuzzy
 msgid ""
 "Changing minor version is considered a downgrade, thus not a supported "
 "operation."
 msgstr ""
-"Zmiana wersji z poprawkami jest uważana za działanie wstecz, a więc nie jest "
-"wspierane."
+"Zmiana wersji z poprawkami jest uważana za degradację, a więc nie jest "
+"wspierana."
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:176
 msgid "OK"
 msgstr "Zatwierdź"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:226
-#, fuzzy
 msgid ""
 "WARNING: Changing to a nightly train is a one way street. Changing back to "
 "stable is not supported!"
 msgstr ""
-"OSTRZEŻENIE: Zmiana na wczesną wersję to droga bez odwrotu. Zmiana na "
-"stabilną nie jest obsługiwana!"
+"OSTRZEŻENIE: Zmiana na wczesną wersję testową to droga bez odwrotu. Powrót "
+"na stabilną wersję nie jest obsługiwane!"
 
 #: freeadmin/static/lib/js/freeadmin.js:359
 msgid "Ok"
