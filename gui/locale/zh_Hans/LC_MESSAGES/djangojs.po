@@ -8,8 +8,8 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:10-0700\n"
-"PO-Revision-Date: 2017-06-22 13:48+0000\n"
-"Last-Translator: Herald Yu <yuhr123@gmail.com>\n"
+"PO-Revision-Date: 2017-06-26 23:51+0000\n"
+"Last-Translator: Chen <871670172@qq.com>\n"
 "Language-Team: Simplified Chinese "
 "<http://weblate.trueos.org/projects/freenas/djangojs/zh_Hans/>\n"
 "Language: zh_Hans\n"
@@ -25,7 +25,7 @@ msgstr ""
 
 #: freeadmin/static/lib/js/freeadmin.js:68
 msgid "Settings"
-msgstr "配置"
+msgstr "设置"
 
 #: freeadmin/static/lib/js/freeadmin.js:79
 msgid "System Information"
@@ -82,7 +82,7 @@ msgid "Every N"
 msgstr "每N个"
 
 msgid "Plugins"
-msgstr "由管理员事先添加 UID<br />"
+msgstr "插件"
 
 #~ msgid "CronJobs"
 #~ msgstr "计划任务"
@@ -112,11 +112,11 @@ msgstr "启用服务"
 
 #: freeadmin/static/lib/js/freeadmin.js:784
 msgid "The cache is being rebuilt."
-msgstr "正在刷新缓存。"
+msgstr "正在重建缓存。"
 
 #: freeadmin/static/lib/js/freeadmin.js:786
 msgid "The cache could not be rebuilt: "
-msgstr "无法刷新缓存："
+msgstr "无法重建缓存： "
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:134
 msgid "Shares"
@@ -124,7 +124,7 @@ msgstr "共享"
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:213
 msgid "Jails"
-msgstr "Jails"
+msgstr "Jails 虚拟机（容器）"
 
 #: freeadmin/static/lib/js/freeadmin/Menu.js:400
 msgid "Support"
@@ -132,7 +132,7 @@ msgstr "支持"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:124
 msgid "Size"
-msgstr "尺寸"
+msgstr "容量"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:263
 msgid "drives"
@@ -204,12 +204,12 @@ msgstr "卷名称"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1067
 msgid "Volume to extend"
-msgstr "要扩展的卷"
+msgstr "扩展指定卷"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1068
 msgid ""
 "Extending an encrypted volume will reset the passphrase and recovery key!"
-msgstr "扩展加密卷将重置密码短语和recovery key！"
+msgstr "扩展加密卷将重置加密卷的密码和恢复密钥！"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1069
 msgid "Encryption"
@@ -245,7 +245,7 @@ msgstr "ZFS 卷管理"
 
 #: freeadmin/static/lib/js/freeadmin/WebShell.js:77
 msgid "Shell"
-msgstr "Shell"
+msgstr "Shell 命令行"
 
 #: freeadmin/static/lib/js/freeadmin/WebShell.js:90
 #: freeadmin/static/lib/js/freeadmin/WebShell.js:114
@@ -335,7 +335,7 @@ msgstr "返回"
 
 #: freeadmin/static/lib/js/freeadmin.js:1772
 msgid "Wizard"
-msgstr "向导"
+msgstr "设置向导"
 
 #: freeadmin/static/lib/js/freeadmin/WizardShares.js:242
 msgid "Paswords do not match."
@@ -420,7 +420,7 @@ msgstr "正在重启 WebGUI"
 
 #: freeadmin/static/lib/js/freeadmin.js:1157
 msgid "Active Directory IDMAP change!"
-msgstr "活动目录 IDMAP 变更！"
+msgstr "Active Directory 活动目录 IDMAP 变更！"
 
 #: freeadmin/static/lib/js/freeadmin.js:1162
 msgid ""
@@ -443,30 +443,29 @@ msgstr "仅实现 \"idmap\" API，且只读。映射必须为<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1166
 msgid "provided in advance by the administrator by adding the uidNumber<br />"
-msgstr ""
+msgstr "由管理员预先添加 uidNumber 属性<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1167
 msgid ""
 "attributes for users and gidNumber attributes for groups in the AD.<br />"
-msgstr ""
+msgstr "设置用户属性，并为 AD 域中的组添加 gidNumber 属性。<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1168
 msgid ""
 "Winbind will only map users that have a uidNumber and whose primary<br />"
-msgstr ""
+msgstr "Winbind 将只列出那些把 uidNumber 作为主键的用户<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1169
 msgid ""
 "group have a gidNumber attribute set. It is however recommended that<br />"
-msgstr ""
+msgstr "组拥有一个 gidNumber 属性。但是建议<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1170
 msgid ""
 "all groups in use have gidNumber attributes assigned, otherwise they<br />"
-msgstr ""
+msgstr "使用中的组都分配了一个 gidNumber 属性，另外(否则？然而？)它们<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1171
-#, fuzzy
 msgid "are not working.<br /><br />"
 msgstr "未工作。<br /><br />"
 
@@ -568,7 +567,7 @@ msgstr "姓名"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:119
 msgid "E-mail"
-msgstr ""
+msgstr "E-Mail"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:120
 msgid "Phone"
@@ -587,7 +586,6 @@ msgid "Environment"
 msgstr "环境"
 
 #: freeadmin/static/lib/js/freeadmin/SupportTicket.js:124
-#, fuzzy
 msgid "Criticality"
 msgstr "临界"
 
@@ -607,20 +605,20 @@ msgstr "附件"
 msgid ""
 "You're not allowed to change away from the nightly train, it is considered a "
 "downgrade."
-msgstr ""
+msgstr "不允许退出每夜开发版队列，因为这被视为降级操作。"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:161
 #: freeadmin/static/lib/js/freeadmin/Update.js:162
 msgid ""
 "If you have an existing boot environment that uses that train, boot into it "
 "in order to upgrade that train."
-msgstr ""
+msgstr "如果你有一个用于该版本的引导环境，使用它进行引导，以便进行版本升级。"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:162
 msgid ""
 "Changing minor version is considered a downgrade, thus not a supported "
 "operation."
-msgstr ""
+msgstr "变更次要版本被认为是降级，因此不支持该操作。"
 
 #: freeadmin/static/lib/js/freeadmin/Update.js:176
 msgid "OK"
@@ -630,7 +628,7 @@ msgstr "好的"
 msgid ""
 "WARNING: Changing to a nightly train is a one way street. Changing back to "
 "stable is not supported!"
-msgstr ""
+msgstr "警告：转换到每夜开发版队列只能单向操作，变更后将不允许回退到稳定版！"
 
 #: freeadmin/static/lib/js/freeadmin.js:359
 msgid "Ok"
