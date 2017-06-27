@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:10-0700\n"
-"PO-Revision-Date: 2017-06-26 23:51+0000\n"
+"PO-Revision-Date: 2017-06-27 21:09+0000\n"
 "Last-Translator: Chen <871670172@qq.com>\n"
 "Language-Team: Simplified Chinese "
 "<http://weblate.trueos.org/projects/freenas/djangojs/zh_Hans/>\n"
@@ -453,7 +453,7 @@ msgstr "设置用户属性，并为 AD 域中的组添加 gidNumber 属性。<br
 #: freeadmin/static/lib/js/freeadmin.js:1168
 msgid ""
 "Winbind will only map users that have a uidNumber and whose primary<br />"
-msgstr "Winbind 将只列出那些把 uidNumber 作为主键的用户<br />"
+msgstr "Winbind 只会列出那些把 uidNumber 作为主键的用户<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1169
 msgid ""
