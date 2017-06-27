@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:07-0700\n"
-"PO-Revision-Date: 2017-06-27 06:02+0000\n"
+"PO-Revision-Date: 2017-06-27 07:31+0000\n"
 "Last-Translator: Chen <871670172@qq.com>\n"
 "Language-Team: Simplified Chinese "
 "<http://weblate.trueos.org/projects/freenas/django/zh_Hans/>\n"
@@ -1637,7 +1637,7 @@ msgstr "工作组"
 msgid ""
 "Workgroup the server will appear to be in when queried by clients (maximum "
 "15 characters)."
-msgstr "客户端查询时显示的工作组名称（最多15个字符）"
+msgstr "客户端查询时显示的工作组名称（最多15个字符）。"
 
 #: services/models.py:88
 msgid "Server description. This can usually be left blank."
@@ -1859,15 +1859,15 @@ msgstr "NFS"
 
 #: services/models.py:257
 msgid "Base Name"
-msgstr "Base Name"
+msgstr "基本名称"
 
 #: services/models.py:258
 msgid ""
 "The base name (e.g. iqn.2007-09.jp.ne.peach.istgt, see RFC 3720 and 3721 for "
 "details) will append the target name that is not starting with 'iqn.'"
 msgstr ""
-"Base Name (例如 iqn.2007-09.jp.ne.peach.istgt, 详细内容请查阅RFC "
-"3720和3721)会附加到未以'iqn'开始的Target名称。"
+"基本名称（例如 iqn.2007-09.jp.ne.peach.istgt）会自动附加「iqn.」到 Target 名称头部。（详细资料请参阅 "
+"RFC3720和3721）"
 
 #: services/models.py:264
 msgid "Discovery Auth Method"
@@ -1918,7 +1918,7 @@ msgstr ""
 
 #: services/models.py:305
 msgid "MaxOutstandingR2T"
-msgstr "MaxOutstandingR2T"
+msgstr "Max Outstanding R2T"
 
 #: services/models.py:306
 msgid "iSCSI initial parameter (16 by default)."
@@ -2608,7 +2608,7 @@ msgstr "掩码"
 msgid ""
 "Set the umask for newly created files to the specified value. The default is "
 "022 (everyone can read, nobody can write)."
-msgstr "为新建文件设置掩码。默认掩码是022（新建文件权限为644，目录权限为755）"
+msgstr "为新建文件设置权限，默认权限是022（所有人只读），建议新建文件权限为644，目录权限为755。"
 
 #: services/models.py:1136 services/models.py:1174 system/models.py:570
 msgid "Extra options"
@@ -2625,7 +2625,7 @@ msgstr "TFTP"
 
 #: services/models.py:1152 services/models.py:1368
 msgid "TCP Port"
-msgstr "TCP端口"
+msgstr "TCP 端口"
 
 #: services/models.py:1154
 msgid "Alternate TCP port. Default is 22"
@@ -2916,8 +2916,8 @@ msgid ""
 "to the hosts allow parameter those hosts that should be permitted access. "
 "Leave this field empty to use default settings"
 msgstr ""
-"该选项为用逗号/空格/制表符分隔的 拒绝 访问该模块的主机列表。当访问列表冲突时，允许访问（白名单）生效。如需要默认拒绝所有主机，使用 ALL "
-"关键字（或使用子网掩码 0.0.0.0/0），然后增加允许访问的主机列表。选项为空时使用默认设置。"
+"拒绝访问该模块的主机列表，请使用英文逗号、空格或Tab键分隔主机。当访问列表冲突时，则允许访问（白名单）生效。如需拒绝所有主机，使用英文单词 ALL（"
+"或使用子网掩码 0.0.0.0/0），然后在允许访问列表添加允许访问的主机。该选项留空时则使用默认设置"
 
 #: services/models.py:1439
 msgid ""
@@ -5422,7 +5422,7 @@ msgstr "无可用插件服务"
 
 #: templates/sharing/index.html:2
 msgid "Apple (AFP)"
-msgstr "Apple (AFP)"
+msgstr "Apple (AFP) 共享"
 
 #: templates/sharing/index.html:7
 msgid "UNIX (NFS)"
@@ -6808,7 +6808,7 @@ msgstr "使用 KeyTab"
 
 #: services/models.py:1613
 msgid "Kerberos keytab file"
-msgstr "Kerberos keytab 文件"
+msgstr "Kerberos 密钥表文件"
 
 #: services/models.py:1629
 msgid "Set this if you want to allow Trusted Domains."
@@ -7054,7 +7054,7 @@ msgstr "无效的密码"
 
 #: storage/forms.py:2396
 msgid "Recovery Key"
-msgstr "Recovery Key"
+msgstr "Recovery Key 恢复密钥"
 
 #: storage/forms.py:2400
 msgid "Restart services"
@@ -7291,7 +7291,7 @@ msgstr "SMB2_24"
 
 #: choices.py:311
 msgid "zle (runs of zeros)"
-msgstr "zle (runs of zeros)"
+msgstr "ZLE 压缩算法（快速简单，压缩率相对较低）"
 
 #: choices.py:318
 msgid "pigz (all rounder)"
@@ -7564,7 +7564,7 @@ msgstr "没有可用的 IP地址"
 #: services/forms.py:758
 #: services/models.py:1612
 msgid "Kerberos keytab"
-msgstr "Kerberos Keytab"
+msgstr "Kerberos 密钥表"
 
 #: services/forms.py:1081
 msgid "LUN ID already exists."
@@ -9247,7 +9247,7 @@ msgstr "autorid"
 
 #: choices.py:789
 msgid "hash"
-msgstr "hash"
+msgstr "Hash"
 
 #: choices.py:790
 msgid "ldap"
@@ -9703,11 +9703,11 @@ msgstr "%s。"
 #: directoryservice/models.py:700
 #: directoryservice/models.py:919
 msgid "Kerberos Keytab"
-msgstr "Kerberos Keytab"
+msgstr "Kerberos 密钥表"
 
 #: directoryservice/forms.py:498
 msgid "A keytab is required."
-msgstr "必须提供一个keytab。"
+msgstr "必须提供一个 Keytab。"
 
 #: directoryservice/models.py:549
 msgid "Kerberos realm."
@@ -9751,7 +9751,7 @@ msgstr "Kerberos principal，例如：primary/instance@REALM"
 
 #: directoryservice/models.py:586
 msgid "Keytab"
-msgstr "Keytab"
+msgstr "Keytab 密钥表"
 
 #: directoryservice/models.py:753
 #: directoryservice/models.py:913
@@ -9785,7 +9785,7 @@ msgstr "Kerberos Realm"
 
 #: templates/directoryservice/index.html:18
 msgid "Kerberos Keytabs"
-msgstr "Kerberos Keytabs"
+msgstr "Kerberos Keytabs 密钥表"
 
 #: templates/system/initialwizard_shares.html:51
 #: templates/system/initialwizard_volume.html:92
