@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:07-0700\n"
-"PO-Revision-Date: 2017-06-27 07:31+0000\n"
+"PO-Revision-Date: 2017-06-27 12:49+0000\n"
 "Last-Translator: Chen <871670172@qq.com>\n"
 "Language-Team: Simplified Chinese "
 "<http://weblate.trueos.org/projects/freenas/django/zh_Hans/>\n"
@@ -2884,7 +2884,7 @@ msgid ""
 "module should take place. In combination with the 'Group' option this "
 "determines what file permissions are available. Leave this field empty to "
 "use default settings"
-msgstr "指定使用文件传输模块的帐号。可结合'群组'的选项，会决定授予哪些文件权限。本项空白时，则使用缺省设值。"
+msgstr "指定使用文件传输模块的帐号。可结合“群组”选项，会决定授予哪些文件权限。本项留空时，则使用缺省设置"
 
 #: services/models.py:1424
 msgid ""
@@ -2975,7 +2975,7 @@ msgstr "接收报告的 E-Mail"
 
 #: services/models.py:1487
 msgid "Destination email address. Separate email addresses by semi-colon"
-msgstr "收件地址。多个邮件地址使用分号做间隔。"
+msgstr "收件地址。多个 E-Mail 地址请使用英文分号间隔"
 
 #: services/models.py:1490 services/models.py:1491
 #: templates/services/core.html:133
@@ -3065,7 +3065,7 @@ msgstr "Mapall组要求Mapall用户"
 
 #: sharing/forms.py:190 sharing/forms.py:195
 msgid "Maproot user/group disqualifies Mapall"
-msgstr "使用root权限映射会取消所有权限权限映射的资格。"
+msgstr "使用root权限映射会取消 普通用户/组 的权限映射的资格"
 
 #: sharing/models.py:39 sharing/models.py:113 storage/models.py:45
 #: storage/models.py:326 storage/views.py:246
@@ -4148,7 +4148,7 @@ msgstr "成功克隆快照。"
 
 #: storage/views.py:684 storage/views.py:835
 msgid "Disk replacement has been initiated."
-msgstr "磁盘替换已完成初始化"
+msgstr "已启动磁盘更换进程。"
 
 #: storage/views.py:689 storage/views.py:840
 msgid "An error occurred."
@@ -4623,7 +4623,7 @@ msgstr "删除"
 
 #: system/models.py:547
 msgid "Delete files on the receiving side that don't exist on sender"
-msgstr "删除接收方中在发送方已不存在的文件。"
+msgstr "从接收端中删除发送端上已过期（不存在）的文件"
 
 #: system/models.py:553
 msgid "Suppress non-error messages"
@@ -5174,7 +5174,7 @@ msgstr "用户名和密码不相符，请重新输入。"
 #: templates/registration/login.html:44
 #, python-format
 msgid "Welcome, %(username)s. Thanks for logging in."
-msgstr "欢迎 %(username)s 登录"
+msgstr "欢迎 %(username)s 登录。"
 
 #: templates/registration/login.html:46
 #, python-format
@@ -5183,7 +5183,7 @@ msgstr "欢迎使用 %(sw_name)s&trade; %(sw_login_version)s"
 
 #: templates/registration/login.html:47
 msgid "Please log in."
-msgstr "请登录"
+msgstr "请登录。"
 
 #: templates/registration/logout.html:4
 msgid "Logged Out"
@@ -5600,7 +5600,7 @@ msgstr "是否要执行垃圾清理任务？"
 
 #: templates/storage/scrub_confirm.html:8
 msgid "This will increase system overhead while in progress"
-msgstr "本操作讲将增大系统开销。"
+msgstr "正在处理中，可能会增加额外的系统开销"
 
 #: templates/storage/snapshot_confirm_rollback.html:7
 msgid "Are you sure you want to rollback dataset to this snapshot state?"
@@ -5827,7 +5827,7 @@ msgstr "发送测试邮件"
 msgid ""
 "HINT: Test e-mails are sent to root user. To configure it use Users -> root -"
 "> Change E-mail"
-msgstr "提示：测试邮件将发送至root用户。请在 帐户 -> 用户 -> root -> E-mail 设置root用户的电子邮箱地址。"
+msgstr "提示：测试邮件将发送至 Root 用户。请在 用户 -> root -> E-Mail 设置root用户的 E-Mail"
 
 #~ msgid "iBurst"
 #~ msgstr "iBurst"
@@ -6726,7 +6726,7 @@ msgstr ""
 "当接收到 Windows 客户端 \"打开并运行文件\" 的请求时，由此参数控制 smbd(8) 行为。Samba 3.6 "
 "和更低的版本，ACL并不检查文件的可执行权限，因此客户端可以随意运行文件，即使该文件本身并不拥有可执行权限。Samba 4.0 修复了此问题，默认情况下，"
 "如果设置此参数为 \"False\"，当运行不具有执行权限的文件时，\"打开并运行文件\" 将被阻止。如果将此参数设置为 \"True\"，Samba "
-"则不会检查\"打开执行\"权限，然而Samba 3.6恢复了此功能"
+"则不会检查\"打开执行\"权限，然而Samba 3.6恢复了此功能。 "
 
 #: services/models.py:339
 msgid "Allow non-root mount"
@@ -7086,7 +7086,7 @@ msgstr "最近一次向远程发送快照"
 msgid ""
 "This should be the name of the ZFS filesystem on remote side. eg: Volumename/"
 "Datasetname not the mountpoint or filesystem path"
-msgstr "应为远程 ZFS 文件系统名。如：poolname/datasetname。不应输入挂载点或文件系统路径。"
+msgstr "此处应为远程 ZFS 文件系统名，如：「Volumename/Datasetname」，不应填写挂载点或文件系统路径"
 
 #: storage/models.py:903
 msgid "Do not start replication after"
@@ -7726,7 +7726,7 @@ msgstr "LLDP"
 
 #: services/models.py:2025
 msgid "Destination email address. Separate email addresses by commas"
-msgstr "接收邮件的地址。多个邮件地址使用分号做间隔。"
+msgstr "E-Mail 收件地址。多个地址请使用英文分号间隔"
 
 #: services/models.py:2058
 msgid "Realm"
@@ -7851,8 +7851,8 @@ msgid ""
 "less than the volume size. Consequently, writes to a sparse volume can fail "
 "with ENOSPC when the pool is low on space. (NOT RECOMMENDED)"
 msgstr ""
-"创建一个无预留空间的松散卷（sparse volume），称为 \"自动精简配置（Thin "
-"Provisioning）\"。\"松散卷\"的预留空间小于卷空间。因此，当存储池空间不足时，写数据到松散卷将会导致 ENOSPC 错误。"
+"创建一个无预留空间的松散卷（Sparse Volume），称为 \"自动精简配置（Thin Provisioning）\"。\"松散卷\""
+"的预留空间小于卷空间，因此当存储池空间不足时，写数据到松散卷将会导致 ENOSPC 错误。「不推荐使用该选项」"
 
 #: storage/forms.py:1624
 msgid "Block size"
@@ -8127,7 +8127,7 @@ msgid ""
 "target=\"_blank\">download</a> the key so you can be able to import it in "
 "the future"
 msgstr ""
-"这是一个加密卷，请务必 <a href=\"%(url)s\" target=\"_blank\">下载</a> key文件，以便日后导入卷时使用。"
+"这是一个加密卷，请务必 <a href=\"%(url)s\" target=\"_blank\">下载</a> Key 文件，以便日后导入卷时使用"
 
 #: templates/storage/volumestatus_datagrid.html:17
 #: templates/storage/volumestatus_datagrid.html:33
@@ -8670,13 +8670,13 @@ msgstr "选中此项，则允许挂载此挂载点下的所有子目录。否则
 #: sharing/models.py:270
 msgid ""
 "If a user is selected, the root user is limited to that user's permissions"
-msgstr "如果选择了用户，root用户的权限将被限制为与所选用户相同。"
+msgstr "如果选择了用户，root用户的权限将被限制为与所选用户相同"
 
 #: sharing/models.py:279
 msgid ""
 "If a group is selected, the root user will also be limited to that group's "
 "permissions"
-msgstr "如果选择了用户组，root用户的权限将被限制为与所选用户组相同。"
+msgstr "如果选择了用户组，root用户的权限将被限制为与所选用户组相同"
 
 #: sharing/models.py:288
 msgid "The specified user's permissions are used by all clients"
@@ -9284,7 +9284,7 @@ msgstr "TDB2"
 #: directoryservice/models.py:444
 #: directoryservice/models.py:464
 msgid "Range Low"
-msgstr "Range Low"
+msgstr "范围下限"
 
 #: directoryservice/models.py:138
 #: directoryservice/models.py:178
@@ -9296,7 +9296,7 @@ msgstr "Range Low"
 #: directoryservice/models.py:448
 #: directoryservice/models.py:468
 msgid "Range High"
-msgstr "Range High"
+msgstr "范围上限"
 
 #: directoryservice/models.py:142
 msgid "Schema Mode"
@@ -9330,7 +9330,7 @@ msgstr "AD Idmap"
 
 #: directoryservice/models.py:182
 msgid "Range Size"
-msgstr "Range Size"
+msgstr "范围大小"
 
 #: directoryservice/models.py:184
 msgid ""
@@ -9469,7 +9469,7 @@ msgstr "在 LDAP 中为组(若设置了user_cn，则也包括用户)附加 @real
 
 #: directoryservice/models.py:369
 msgid "LDAP Domain"
-msgstr "LDAP Domain"
+msgstr "LDAP Domain 域"
 
 #: directoryservice/models.py:372
 msgid ""
@@ -9506,7 +9506,7 @@ msgstr ""
 
 #: directoryservice/models.py:402
 msgid "LDAP Realm"
-msgstr "LDAP Realm"
+msgstr "LDAP Realm 域"
 
 #: directoryservice/models.py:405
 msgid ""
@@ -9711,7 +9711,7 @@ msgstr "必须提供一个 Keytab。"
 
 #: directoryservice/models.py:549
 msgid "Kerberos realm."
-msgstr "Kerberos realm."
+msgstr "Kerberos Realm 域。"
 
 #: directoryservice/models.py:552
 msgid "KDC"
@@ -9743,11 +9743,11 @@ msgstr "指向执行密码变更的服务器。如果服务器不存在，将尝
 
 #: directoryservice/models.py:581
 msgid "Principal"
-msgstr "Principal"
+msgstr "Principal 主体"
 
 #: directoryservice/models.py:583
 msgid "Kerberos principal, eg: primary/instance@REALM"
-msgstr "Kerberos principal，例如：primary/instance@REALM"
+msgstr "Kerberos Principal 主体，例如：primary/instance@REALM"
 
 #: directoryservice/models.py:586
 msgid "Keytab"
@@ -9757,7 +9757,7 @@ msgstr "Keytab 密钥表"
 #: directoryservice/models.py:913
 #: services/models.py:1662
 msgid "Kerberos Realm"
-msgstr "Kerberos Realm"
+msgstr "Kerberos Realm 域"
 
 #: services/views.py:269
 msgid "SMB successfully updated."
@@ -9781,7 +9781,7 @@ msgstr "快速"
 
 #: templates/directoryservice/index.html:15
 msgid "Kerberos Realms"
-msgstr "Kerberos Realm"
+msgstr "Kerberos Realm 域"
 
 #: templates/directoryservice/index.html:18
 msgid "Kerberos Keytabs"
@@ -10164,7 +10164,7 @@ msgstr "下载中"
 
 #: system/utils.py:103
 msgid "Installing"
-msgstr "安装中..."
+msgstr "正在安装"
 
 #: system/nav.py:32
 #: templates/system/index.html:9
@@ -10422,7 +10422,7 @@ msgstr "要使用的站点名称。"
 msgid ""
 "This parameter controls whether or not Samba should obey PAM's account and "
 "session management directives"
-msgstr "此参数控制 Samba 是否应该遵从 PAM 和会话的管理指令。"
+msgstr "此参数用于控制 Samba 是否应该遵从 PAM账号设置和会话的管理指令"
 
 #: services/models.py:268
 msgid ""
@@ -10780,7 +10780,7 @@ msgstr "日志 (RAID 0: 不可靠，性能最佳，可用空间最大)"
 
 #: system/forms.py:2752
 msgid "Datastore not found in the server."
-msgstr "服务器上未找到Datastore"
+msgstr "未在服务器上发现数据存储。"
 
 #: system/forms.py:2757
 msgid "Failed to connect: %s"
@@ -11218,8 +11218,8 @@ msgid ""
 "details) will append the target name that is not starting with 'iqn.', "
 "'eui.' or 'naa.'"
 msgstr ""
-"Base Name (例如 iqn.2005-10.org.freenas.ctl，详细内容请查阅RFC 3720和3721)会附加到未以'iqn'、"
-"'eui.' 或 'naa.' 开头的 Target 名称。"
+"基本名称（例如 iqn.2005-10.org.freenas.ctl）会自动在 Target 名称头添加「iqn.」、「eui.」或 「naa.」标识 "
+"。（更多详细内容请查阅RFC 3720 和 3721）"
 
 #: services/models.py:437
 msgid "List of Internet Storage Name Service (iSNS) Servers"
@@ -11401,8 +11401,8 @@ msgid ""
 "copied over to the path specified in the 'Destination' field below and then "
 "unmounted. Importing non-zfs disks permanently as a Volume is deprecated"
 msgstr ""
-"这是一个非ZFS文件系统的磁盘，系统仍会挂载，磁盘中的数据将被拷贝到 'Destination' "
-"项所设置的路径中，拷贝完成请卸载该磁盘。请勿长期使用非ZFS文件系统的卷。"
+"这是一个非 ZFS 文件系统的磁盘，系统仍会挂载，磁盘中的数据将被拷贝到「Destination」项所设置的路径中，拷贝完成请卸载该磁盘。"
+"不推荐长期使用非 ZFS 文件系统的卷"
 
 #: storage/forms.py:746
 msgid "This must be a dataset/folder in an existing Volume"
@@ -11630,14 +11630,14 @@ msgid ""
 "The Certificate: %(cert_name)s is either malformed or invalid and cannot be "
 "used for any services. This Alert will remain here until the certificate is "
 "deleted"
-msgstr "证书: %(cert_name)s 损坏或无效，无法用于任何服务。在删除该证书之前，此通知将始终显示。"
+msgstr "%(cert_name)s 证书损坏或无效，无法用于任何服务。在删除该证书之前，此警告将始终显示"
 
 #: system/alertmods/http_ssl.py:38
 msgid ""
 "The Certificate Authority(CA): %(CA_name)s is either malformed or invalid "
 "and cannot be used for any services. This Alert will remain here until the "
 "CA is deleted"
-msgstr "CA: %(cert_name)s 损坏或无效，无法用于任何服务。在删除该 CA 之前，此通知将始终显示。"
+msgstr "CA: %(cert_name)s 损坏或无效，无法用于任何服务。在删除该 CA 之前，此警告将始终显示"
 
 #: system/alertmods/license_expired.py:24
 msgid "Unable to decode %s license"
@@ -11828,7 +11828,7 @@ msgstr "执行此项操作将重启系统！"
 msgid ""
 "HINT: Test e-mails are sent to root user. To configure it use Account -> "
 "Users -> View Users -> root -> Change E-mail"
-msgstr "提示：测试邮件将发送至 root 用户。请在 帐户 -> 用户 -> root -> E-mail 设置 root 用户的电子邮箱地址。"
+msgstr "提示：测试邮件将发送至 root 用户。请在 帐户 -> 用户 -> root -> E-Mail 设置 root 用户的电子邮箱地址"
 
 #: templates/system/initialwizard_volume.html:79
 msgid "Disks to be formatted"
@@ -11912,7 +11912,7 @@ msgstr "规则名称"
 #: directoryservice/models.py:962
 #: directoryservice/models.py:1198
 msgid "Kerberos Principal"
-msgstr "Kerberos Principal"
+msgstr "Kerberos Principal 主体"
 
 #: network/forms.py:254
 msgid "The following VHIDs are already in use: %s"
@@ -11999,7 +11999,7 @@ msgstr "卸载"
 
 #: vcp/forms.py:56
 msgid "Please select the TrueNAS management interface."
-msgstr "请选择 TrueNAS 的管理接口"
+msgstr "请选择 TrueNAS 的管理接口。"
 
 #: vcp/hook.py:45
 #: vcp/nav.py:35
