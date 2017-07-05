@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:10-0700\n"
-"PO-Revision-Date: 2017-06-23 07:12+0000\n"
+"PO-Revision-Date: 2017-07-05 08:57+0000\n"
 "Last-Translator: Boguslaw Sobczak <rudzik@consoft.com.pl>\n"
 "Language-Team: Polish "
 "<http://weblate.trueos.org/projects/freenas/djangojs/pl/>\n"
@@ -46,7 +46,7 @@ msgstr "Konto"
 
 #: freeadmin/static/lib/js/freeadmin.js:270
 msgid "Storage"
-msgstr "Magazyn"
+msgstr "Magazynowanie"
 
 #: freeadmin/static/lib/js/freeadmin.js:500
 #: freeadmin/static/lib/js/freeadmin.js:523
@@ -141,15 +141,15 @@ msgstr "nie ma więcej dysków"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1015
 msgid "Add Volume"
-msgstr "Dodaj wolumen"
+msgstr "Dodaj wolumin"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1015
 msgid "Existing data will be cleared"
-msgstr "Istniejące dane zostaną usunięte"
+msgstr "Istniejące dane zostaną skasowane"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1063
 msgid "Volume Name"
-msgstr "Nazwa wolumenu"
+msgstr "Nazwa woluminu"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1068
 msgid "Available disks"
@@ -225,11 +225,11 @@ msgstr "Przeciągnij i upuść aby zmienić rozmiar"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1019
 msgid "Extend Volume"
-msgstr "Powiększ wolumen"
+msgstr "Rozbuduj wolumin"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1067
 msgid "Volume to extend"
-msgstr "Wolumen do powiększenia"
+msgstr "Wolumin do powiększenia"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1068
 msgid ""
@@ -243,7 +243,7 @@ msgstr "Szyfrowanie"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1072
 msgid "Volume layout"
-msgstr "Rozmieszenie wolumenów"
+msgstr "Rozmieszenie woluminów"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1073
 msgid "Estimated capacity"
@@ -255,7 +255,7 @@ msgstr "Konfiguracja ręczna"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1225
 msgid "ZFS Volume Manager"
-msgstr "Menadżer wolumenów ZFS"
+msgstr "Menadżer woluminów ZFS"
 
 #: freeadmin/static/lib/js/freeadmin/WebShell.js:90
 #: freeadmin/static/lib/js/freeadmin/WebShell.js:114
