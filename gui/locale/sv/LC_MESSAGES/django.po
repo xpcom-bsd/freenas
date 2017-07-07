@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:01-0700\n"
-"PO-Revision-Date: 2017-07-07 14:39+0000\n"
+"PO-Revision-Date: 2017-07-07 19:04+0000\n"
 "Last-Translator: Ludvig Nybogård <ludvig@nybogard.nu>\n"
 "Language-Team: Swedish "
 "<http://weblate.trueos.org/projects/freenas/django/sv/>\n"
@@ -525,7 +525,7 @@ msgstr "För att verifiera, skriv samma lösenord som ovan."
 #: freeadmin/navtree.py:360 templates/account/bsdusers.html:8
 #: templates/account/bsdusers.html.py:87
 msgid "Shell"
-msgstr "Kommando-skal"
+msgstr "Kommandotolk"
 
 #~ msgid "Disable password logins"
 #~ msgstr "Inaktivera lösenords baserad inloggningar"
@@ -694,7 +694,7 @@ msgstr "Fullständigt namn"
 
 #: account/models.py:126 templates/account/bsdusers.html:90
 msgid "E-mail"
-msgstr "E-mail"
+msgstr "E-post"
 
 #: account/models.py:131 account/models.py:176 services/models.py:593
 #: services/models.py:1416 system/models.py:329 system/models.py:522
@@ -1267,7 +1267,7 @@ msgstr "Sökvägen där instickmodulerna är sparade efter installation"
 #: services/models.py:836 services/nav.py:215 templates/services/core.html:96
 #: templates/services/index.html:16
 msgid "Plugins"
-msgstr "Instickmoduler"
+msgstr "Tilläggsprogram"
 
 #: plugins/models.py:112 templates/plugins/mountpoints.html:4
 msgid "Source"
@@ -1456,7 +1456,7 @@ msgstr "Dold för målsidan."
 
 #: services/forms.py:501
 msgid "Secret (Confirm)"
-msgstr "Hemlig (bekräfta)"
+msgstr "Hemlighet (Bekräfta)"
 
 #: services/forms.py:503 services/forms.py:511
 msgid "Enter the same secret above for verification."
@@ -1467,7 +1467,7 @@ msgstr "För att verifiera, ange samma hemlighet som ovan."
 
 #: services/forms.py:506 services/models.py:605 services/models.py:610
 msgid "Initiator side secret. (for mutual CHAP authentication)"
-msgstr "Källsidans hemlighet (för ömsesidig CHAP autentisering)."
+msgstr "Källsidans hemlighet (för ömsesidig CHAP autentisering)"
 
 #~ msgid "Initiator Secret (Confirm)"
 #~ msgstr "Käll-hemlighet (verifiera)"
@@ -1487,7 +1487,7 @@ msgstr "Jämlikehemligheten kan inte vara densamma som användarhemligheten."
 
 #: services/forms.py:566 services/forms.py:569
 msgid "The peer user is required if you set a peer secret."
-msgstr "Peer användaren är obligatorisk om du har angett en peer hemlighet"
+msgstr "Peer-användaren är obligatorisk om du har angett en peer-hemlighet."
 
 #: services/forms.py:582 services/forms.py:614 services/forms.py:756
 #: services/forms.py:821 services/forms.py:927 services/forms.py:955
@@ -1934,7 +1934,7 @@ msgstr "Maximalt antal anslutningar i varje session (standard 8)."
 
 #: services/models.py:299
 msgid "Max. pre-send R2T"
-msgstr "Maximalt . för-skicka R2T."
+msgstr "Maximalt för-skickade R2T"
 
 #: services/models.py:300
 msgid ""
@@ -1946,7 +1946,7 @@ msgstr ""
 
 #: services/models.py:305
 msgid "MaxOutstandingR2T"
-msgstr "Max uteblivna R2T."
+msgstr "Max uteblivna R2T"
 
 #: services/models.py:306
 msgid "iSCSI initial parameter (16 by default)."
@@ -2331,6 +2331,7 @@ msgid ""
 "building, Room xyzzy'."
 msgstr ""
 "Platsinformation, t.ex fysisk plats för detta system: \"Källaren, Rum xyzzy\""
+"."
 
 #: services/models.py:859
 msgid "Contact"
@@ -2367,7 +2368,7 @@ msgstr "Identifierare"
 
 #: services/models.py:894
 msgid "This name is used to uniquely identify your UPS on this system."
-msgstr "Detta namn används för att unikt identifiera din UPS på detta system"
+msgstr "Detta namn används för att unikt identifiera din UPS på detta system."
 
 #: services/models.py:898
 msgid "Driver"
@@ -2552,13 +2553,11 @@ msgid "Minimum passive port"
 msgstr "Minimum passiv port"
 
 #: services/models.py:1044
-#, fuzzy
 msgid ""
 "The minimum port to allocate for PASV style data connections (0 = use any "
 "port)."
 msgstr ""
-"Den minsta port att fördela för PASV stildata-anslutningar (0 = använd en "
-"port)."
+"Den minsta port att tilldela för PASV-anslutningar (0 = använd valfri port)."
 
 #: services/models.py:1048
 msgid "Maximum passive port"
@@ -2841,7 +2840,7 @@ msgstr "Lösenordskryptering"
 
 #: services/models.py:1312
 msgid "The password change protocol to use."
-msgstr "Protokoll för lösenords byte att använda"
+msgstr "Protokoll för lösenordsbyte att använda."
 
 #: services/models.py:1317
 msgid "User Suffix"
@@ -3217,9 +3216,9 @@ msgid ""
 "If true then only guest connections to the share are permitted. This "
 "parameter will have no effect if Allow Guest Access is not set for the share."
 msgstr ""
-"Om sant så är endast gäst anslutningar till utdelningen tillåtna. Denna "
-"parameter har ingen effekt om tillåta gäster inte är inställd för "
-"utdelningen"
+"Om sant så är endast gästanslutningar till utdelningen tillåtna. Denna "
+"parameter har ingen effekt om ’Tillåt gäståtkomst’ inte är aktiverad för "
+"utdelningen."
 
 #: sharing/models.py:71
 msgid "Hosts Allow"
@@ -3351,7 +3350,7 @@ msgid ""
 "follows the allow option format."
 msgstr ""
 "Tillåter vissa användare och grupper att få skrivskyddad tillgång till en "
-"utdelning. Detta följer tillåt alternativet format"
+"utdelning. Det följer samma format som tillåt alternativet."
 
 #: sharing/models.py:155
 msgid "Read-write Access"
@@ -3611,7 +3610,7 @@ msgstr "Delning"
 #: storage/forms.py:120
 #, python-format
 msgid "%s is not a valid number"
-msgstr "%s är ​​inte ett giltigt nummer"
+msgstr "%s är inte ett giltigt nummer"
 
 #: storage/forms.py:129 storage/forms.py:426 templates/storage/import.html:9
 #: templates/storage/wizard.html:17
@@ -3945,7 +3944,7 @@ msgstr "Dag i månaden"
 #: storage/models.py:230 system/models.py:356 system/models.py:508
 #: system/models.py:680
 msgid "Values 1-31 allowed."
-msgstr "Tillåtna värden är 1-31"
+msgstr "Tillåtna värden är 1-31."
 
 #: storage/models.py:235 system/models.py:361 system/models.py:513
 #: system/models.py:685 templates/storage/scrub.html:10
@@ -4110,7 +4109,7 @@ msgstr ""
 
 #: storage/models.py:686
 msgid "Limit (kB/s)"
-msgstr "Begränsning ​​(kB / s"
+msgstr "Begränsning (kB/s)"
 
 #: storage/models.py:687
 msgid "Limit the replication speed. Unit in kilobytes/seconds. 0 = unlimited."
@@ -4285,7 +4284,7 @@ msgstr "Datasetet har tagits bort framgångsrikt."
 
 #: storage/views.py:583
 msgid "Snapshot successfully deleted."
-msgstr "Ögonblicksbilden har tagits bort"
+msgstr "Ögonblicksbilden har tagits bort."
 
 #: storage/views.py:604
 msgid "Snapshots successfully deleted."
@@ -4293,7 +4292,7 @@ msgstr "Ögonblicksbilden har tagits bort."
 
 #: storage/views.py:616
 msgid "Rollback successful."
-msgstr "Återställing framgångsrik"
+msgstr "Återställningen lyckades."
 
 #~ msgid "Snapshot successfully added."
 #~ msgstr "Ögonblicksbilden lagts till."
@@ -4312,7 +4311,7 @@ msgstr "Hårddisk utbyte har inletts."
 
 #: storage/views.py:689 storage/views.py:840
 msgid "An error occurred."
-msgstr "Ett fel inträffades"
+msgstr "Ett fel inträffade."
 
 #: storage/views.py:706
 msgid "Disk detach has been successfully done."
@@ -5358,7 +5357,7 @@ msgstr "Ditt användarnamn och lösenord matchade inte. Försök igen."
 #: templates/registration/login.html:44
 #, python-format
 msgid "Welcome, %(username)s. Thanks for logging in."
-msgstr "Välkommmen, %(username)s. Tack för att du loggar in"
+msgstr "Välkommmen %(username)s. Tack för att du loggade in."
 
 #, python-format
 #~ msgid "Welcome to %(sw_name)s&trade; %(sw_login_version)s"
@@ -5373,7 +5372,7 @@ msgstr "Utloggad"
 
 #: templates/registration/logout.html:24
 msgid "You are now logged out."
-msgstr "Du är nu utloggad"
+msgstr "Du är nu utloggad."
 
 #: templates/registration/logout.html:24
 msgid "Log back in"
@@ -5793,8 +5792,7 @@ msgstr "Detta kommer att öka systemets overhead under arbetets gång"
 #: templates/storage/snapshot_confirm_rollback.html:7
 msgid "Are you sure you want to rollback dataset to this snapshot state?"
 msgstr ""
-"Är du säker på att du vill återställa tidigare dataset till denna "
-"ögonblicksbild tillstånd."
+"Är du säker på att du vill återställa datasetet till denna tidigare version?"
 
 #: templates/storage/snapshots.html:21
 msgid "Clone snapshot"
@@ -5988,7 +5986,7 @@ msgstr "Firmware uppdatering"
 
 #: templates/system/config_ok.html:13 templates/system/config_ok2.html:6
 msgid "Restarting..."
-msgstr "Startar om ... "
+msgstr "Startar om..."
 
 #: templates/system/config_restore.html:3
 msgid "Are you sure you want to restore to factory config?"
@@ -6391,7 +6389,7 @@ msgstr "9600"
 
 #: choices.py:601
 msgid "19200"
-msgstr "19200                "
+msgstr "19200"
 
 #: choices.py:602
 msgid "38400"
@@ -6464,7 +6462,7 @@ msgstr "Storlek på zvol-volym"
 
 #: support/models.py:45
 msgid "A description of the issue."
-msgstr "Beskrivning av ärendet"
+msgstr "Beskrivning av ärendet."
 
 #: system/models.py:69
 msgid "WebGUI HTTP Port"
@@ -6500,7 +6498,7 @@ msgstr "Detaljerad"
 #: services/models.py:2103
 #: services/models.py:2104
 msgid "Domain Controller"
-msgstr "Domänkontrollanten                "
+msgstr "Domänkontrollant"
 
 #: choices.py:709
 msgid "data"
@@ -6512,7 +6510,7 @@ msgstr "autentisering"
 
 #: choices.py:714
 msgid "ctrl+!data"
-msgstr "ctrl+!data                "
+msgstr "ctrl+!data"
 
 #: choices.py:716
 msgid "auth+!data"
@@ -6524,11 +6522,11 @@ msgstr "Bekräfta nytt lösenord"
 
 #: account/forms.py:514
 msgid "Home directory cannot contain colons"
-msgstr ""
+msgstr "Hemkatalogen får inte innehålla kolon"
 
 #: account/models.py:139
 msgid "Built-in User"
-msgstr ""
+msgstr "Inbyggd användare"
 
 #: api/resources.py:888
 #: storage/models.py:745
@@ -6545,7 +6543,7 @@ msgstr "Varje %s dag"
 
 #: api/resources.py:992
 msgid "From %(begin)s through %(end)s, %(repeat)s"
-msgstr ""
+msgstr "Från %(begin)s till %(end)s, %(repeat)s"
 
 #: jails/admin.py:265
 #: jails/models.py:434
@@ -6554,12 +6552,12 @@ msgstr "URL"
 
 #: jails/forms.py:90
 msgid "type"
-msgstr ""
+msgstr "typ"
 
 #: jails/forms.py:182
 #: jails/forms.py:629
 msgid "No jail root configured."
-msgstr ""
+msgstr "Ingen rot-katalog har angetts för jail(s)."
 
 #: jails/forms.py:516
 msgid "autostart"
@@ -7458,15 +7456,15 @@ msgstr "Allvarligt"
 
 #: choices.py:677
 msgid "Debug2"
-msgstr "Avlusa2                "
+msgstr "Felsök2"
 
 #: choices.py:678
 msgid "Debug3"
-msgstr "Avlusa3                "
+msgstr "Felsök3"
 
 #: choices.py:685
 msgid "Auth"
-msgstr "Behörighet                "
+msgstr "Behörighet"
 
 #: choices.py:688
 msgid "Local 2"
@@ -8419,7 +8417,7 @@ msgstr ""
 
 #: choices.py:171
 msgid "CORE"
-msgstr "Kärna                "
+msgstr "Kärna"
 
 #: choices.py:176
 msgid "SMB2"
