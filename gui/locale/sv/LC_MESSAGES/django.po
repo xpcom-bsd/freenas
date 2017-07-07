@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:01-0700\n"
-"PO-Revision-Date: 2017-07-07 14:30+0000\n"
+"PO-Revision-Date: 2017-07-07 14:39+0000\n"
 "Last-Translator: Ludvig Nybogård <ludvig@nybogard.nu>\n"
 "Language-Team: Swedish "
 "<http://weblate.trueos.org/projects/freenas/django/sv/>\n"
@@ -752,7 +752,7 @@ msgstr "Gruppen %s är inte giltig."
 
 #: freeadmin/forms.py:174
 msgid "The path must reside within a volume mount point"
-msgstr "Sökvägen måste finnas inuti en monterbar volym                "
+msgstr "Sökvägen måste finnas inuti en monterbar volym"
 
 #: freeadmin/middleware.py:198 freeadmin/views.py:445 freeadmin/views.py:669
 #, python-format
@@ -5656,9 +5656,15 @@ msgid_plural ""
 "\n"
 "        This will delete all files within the dataset and child datasets.\n"
 "        "
-msgstr[0] "Detta kommer att radera alla filer ur databasen."
+msgstr[0] ""
+"\n"
+"        Detta kommer att radera alla filer ur datasetet.\n"
+"        "
 msgstr[1] ""
-"Detta kommer att radera alla filer ur databasen och dess underkategorier."
+"\n"
+"        Detta kommer att radera alla filer ur datasetet och dess "
+"underkategorier.\n"
+"        "
 
 #: templates/storage/dataset_edit.html:2
 msgid "Edit Dataset"
