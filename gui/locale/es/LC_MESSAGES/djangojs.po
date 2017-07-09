@@ -8,8 +8,8 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:10-0700\n"
-"PO-Revision-Date: 2017-01-08 19:38+0000\n"
-"Last-Translator: Jonay Santana <jonay.santana@gmail.com>\n"
+"PO-Revision-Date: 2017-07-09 14:19+0000\n"
+"Last-Translator: Joan Sanchez <jsanchezbarruguer@gmail.com>\n"
 "Language-Team: Spanish "
 "<http://weblate.trueos.org/projects/freenas/djangojs/es/>\n"
 "Language: es\n"
@@ -154,6 +154,7 @@ msgid "Disk size mismatch"
 msgstr "Disparidad de tamaños de disco"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:520
+#, fuzzy
 msgid ""
 "Your configuration is optimal!<br /><br />It means you'll have the best "
 "performance possible for this number of disks and type of disk group.<br /><"
@@ -161,6 +162,11 @@ msgid ""
 "href='http://doc.freenas.org/index.php/Volumes#ZFS_Volume_Manager' "
 "target='_blank'>documentation</a>."
 msgstr ""
+"¡Tu configuración es óptima!<br /><br />Significa que tienes el mejor "
+"rendimiento posible para este número de discos y tipo de grupo de disco.<br "
+"/><br />Para más información detalla por favor, diríjase a la <a "
+"href='http://doc.freenas.org/index.php/Volumes#ZFS_Volume_Manager' "
+"target='_blank'>documentación</a>."
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:525
 msgid ""
@@ -200,7 +206,6 @@ msgid "Volume to extend"
 msgstr "Volumen a extender"
 
 #: freeadmin/static/lib/js/freeadmin/VolumeManager.js:1068
-#, fuzzy
 msgid ""
 "Extending an encrypted volume will reset the passphrase and recovery key!"
 msgstr ""
@@ -426,6 +431,7 @@ msgstr ""
 msgid ""
 "<font color='red'>STOP</font>: Do you know what you are doing?<br /><br />"
 msgstr ""
+"<font color='red'>STOP:</font> ¿Sabes lo que estás haciendo?<br /><br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1163
 msgid ""
@@ -433,8 +439,11 @@ msgid ""
 msgstr ""
 
 #: freeadmin/static/lib/js/freeadmin.js:1164
+#, fuzzy
 msgid "an AD server that uses RFC2307/SFU schema extensions. This module<br />"
 msgstr ""
+"un servidor de DA que utilice el esquema de extensiones RFC2307/SFU. Este "
+"módulo<br />"
 
 #: freeadmin/static/lib/js/freeadmin.js:1165
 msgid ""
