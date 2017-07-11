@@ -8,8 +8,8 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:01-0700\n"
-"PO-Revision-Date: 2017-07-07 19:09+0000\n"
-"Last-Translator: Jakob Sundberg <jakob@mress.se>\n"
+"PO-Revision-Date: 2017-07-11 13:23+0000\n"
+"Last-Translator: Ludvig Nybogård <ludvig@nybogard.nu>\n"
 "Language-Team: Swedish "
 "<http://weblate.trueos.org/projects/freenas/django/sv/>\n"
 "Language: sv\n"
@@ -99,11 +99,11 @@ msgstr "UDMA-133"
 
 #: choices.py:67
 msgid "SATA 1.5Gbit/s"
-msgstr "SATA 1.5Gbit/s"
+msgstr "SATA 1,5 Gbit/s"
 
 #: choices.py:68
 msgid "SATA 3.0Gbit/s"
-msgstr "SATA 3.0Gbit/s"
+msgstr "SATA 3,0 Gbit/s"
 
 #: choices.py:72
 msgid "Always On"
@@ -399,27 +399,27 @@ msgstr "Läs och Skriv"
 #: choices.py:510 choices.py:511
 #, python-format
 msgid "%(minutes)s minutes"
-msgstr "%(minut)er minuter"
+msgstr "%(minutes)s minuter"
 
 #: choices.py:512
 #, python-format
 msgid "%(hour)s hour"
-msgstr "%(timme)ar timme"
+msgstr "%(hour)s timme"
 
 #: choices.py:513 choices.py:514 choices.py:515 choices.py:516 choices.py:517
 #, python-format
 msgid "%(hours)s hours"
-msgstr "%(timmar)s timmar"
+msgstr "%(hours)s timmar"
 
 #: choices.py:518
 #, python-format
 msgid "%(day)s day"
-msgstr "%(dag)ar dag"
+msgstr "%(day)s dag"
 
 #: choices.py:519
 #, python-format
 msgid "%(week)s week"
-msgstr "%(vecka)s vecka"
+msgstr "%(week)s vecka"
 
 #: choices.py:523
 msgid "Never - Check the device regardless of its power mode"
@@ -454,7 +454,7 @@ msgstr "Utökat självtest (enbart  ATA)"
 
 #: choices.py:533
 msgid "Offline Immediate Test (ATA only)"
-msgstr "Ommedelbart offline-test (enbart ATA)"
+msgstr "Omedelbart offline-test (enbart ATA)"
 
 #: choices.py:562
 msgid "Rsync module"
@@ -784,17 +784,17 @@ msgstr "Stäng av"
 #: freeadmin/navtree.py:408
 #, python-format
 msgid "Empty data returned from %s"
-msgstr "Tomt data returnerades ifrån% s"
+msgstr "Tom data returnerades från%s"
 
 #: freeadmin/navtree.py:411 services/views.py:77
 #, python-format
 msgid "Couldn't retrieve %(url)s: %(error)s"
-msgstr "Kunde inte hämta% (url) s:% (error) s"
+msgstr "Kunde inte hämta %(url)s: %(error)s"
 
 #: freeadmin/navtree.py:445
 #, python-format
 msgid "An error occurred while unserializing from %(url)s: %(error)s"
-msgstr "Ett fel inträffade när unserializing från% (url) s:% (error) s"
+msgstr "Ett fel inträffade under avseriealiseringen från %(url)s: %(error)s"
 
 #: freeadmin/views.py:257
 msgid "It was not possible to retrieve the current status"
@@ -812,7 +812,7 @@ msgstr "Tjänsten kunde inte startas om."
 #: freeadmin/views.py:781 freeadmin/views.py:786
 #, python-format
 msgid "%s successfully deleted."
-msgstr "LDAP-tjänsten kunde inte startas om."
+msgstr "Raderingen av %s lyckades."
 
 #: middleware/zfs.py:560 storage/models.py:579
 msgid "Error getting total space"
@@ -839,7 +839,7 @@ msgstr "NIC"
 #: network/forms.py:410
 #, python-format
 msgid "You cannot configure multiple interfaces with the same IP address (%s)"
-msgstr "Du kan inte konfigurera flera gränssnitt med samma IP-adress (% s)"
+msgstr "Du kan inte konfigurera flera gränssnitt med samma IP-adress (%s)"
 
 #: network/forms.py:120
 msgid "You have to specify IPv4 address as well"
@@ -1063,7 +1063,7 @@ msgstr "Fysiskt gränssnitt"
 
 #: network/models.py:274 templates/network/vlan.html:6
 msgid "VLAN Tag"
-msgstr "VLAN Tag"
+msgstr "VLAN-tagg"
 
 #: network/models.py:278 network/models.py:392 services/models.py:86
 #: services/models.py:916 storage/models.py:211 storage/models.py:352
@@ -1079,7 +1079,7 @@ msgstr "VLAN"
 
 #: network/models.py:293
 msgid "VLANs"
-msgstr "VLANs"
+msgstr "VLAN"
 
 #: network/models.py:314
 msgid "Protocol Type"
@@ -1456,7 +1456,7 @@ msgstr "Dold för målsidan."
 
 #: services/forms.py:501
 msgid "Secret (Confirm)"
-msgstr "Lösenord (bekräfta)"
+msgstr "Lösenord (Bekräfta)"
 
 #: services/forms.py:503 services/forms.py:511
 msgid "Enter the same secret above for verification."
@@ -2109,7 +2109,7 @@ msgstr "IP-adress"
 
 #: services/models.py:534
 msgid "Portal IP"
-msgstr "Portal IP"
+msgstr "Portal-IP"
 
 #: services/models.py:544 templates/services/iscsi_authini.html:6
 msgid "Initiators"
@@ -2557,14 +2557,13 @@ msgid ""
 "The minimum port to allocate for PASV style data connections (0 = use any "
 "port)."
 msgstr ""
-"Den minsta port att tilldela för PASV-anslutningar (0 = använd valfri port)."
+"Den minsta port att allokera för PASV-anslutningar (0 = använd valfri port)."
 
 #: services/models.py:1048
 msgid "Maximum passive port"
 msgstr "Maximal passiv port"
 
 #: services/models.py:1049
-#, fuzzy
 msgid ""
 "The maximum port to allocate for PASV style data connections (0 = use any "
 "port). Passive ports restricts the range of ports from which the server will "
@@ -2575,15 +2574,15 @@ msgid ""
 "large enough to handle many simultaneous passive connections (for example, "
 "49152-65534, the IANA-registered ephemeral port range)."
 msgstr ""
-"Den maximala port att fördela för PASV stildata-anslutningar (0 = använd "
-"valfri port). Passiva portar hamnar begränsar intervallet av portar som "
-"servern kommer att välja när skickade PASV kommando från en klient. Servern "
-"kommer att slumpmässigt välja ett nummer från inom det angivna intervallet "
-"tills en öppen port hittas. Den portintervall som väljs måste vara i den "
-"icke-privilegierade område (t.ex. större än eller lika med 1024). Det "
-"rekommenderas starkt att den valda området vara tillräckligt stort för att "
-"hantera många samtidiga passiva anslutningar (till exempel 49.152-65.534, "
-"IANA-registrerade flyktig portintervall)."
+"Den maximala port att allokera för PASV-anslutningar (0 = använd valfri port)"
+". Passiva portar begränsar intervallet av portar som servern kommer att "
+"välja när ett PASV-kommando mottags från en klient. Servern kommer "
+"slumpmässigt välja ett nummer från inom det angivna intervallet tills en "
+"öppen port hittas. Det portintervall som väljs måste vara i det icke-"
+"privilegierade området (t.ex. större än eller lika med 1024). Det "
+"rekommenderas starkt att det valda området är tillräckligt stort för att "
+"hantera många samtidiga passiva anslutningar (till exempel 49152-65534, det "
+"IANA-registrerade dynamiska portintervallet)."
 
 #: services/models.py:1062
 msgid "Local user upload bandwidth"
@@ -2800,7 +2799,7 @@ msgstr "Namnet eller IP-adressen för LDAP-servern"
 
 #: services/models.py:1290
 msgid "Base DN"
-msgstr "Base DN"
+msgstr "Bas-DN"
 
 #: services/models.py:1292
 msgid ""
@@ -3142,7 +3141,7 @@ msgstr "Bekräfta delat lösenord"
 #: sharing/forms.py:139
 #, python-format
 msgid "The path %s does not exist"
-msgstr "Sökvägen% s finns inte"
+msgstr "Sökvägen %s finns inte"
 
 #~ msgid "The field is a not a valid IP address or network"
 #~ msgstr "Fältet är en inte en giltig IP-adress eller nätverk"
@@ -3497,7 +3496,7 @@ msgstr ""
 
 #: sharing/models.py:216
 msgid "AFP3 Unix Privs"
-msgstr "AFP3 Unix Privs"
+msgstr "AFP3 Unix-privilegier"
 
 #: sharing/models.py:217
 msgid "Use AFP3 unix privileges."
@@ -3910,7 +3909,7 @@ msgstr "Tröskelvärdets dagar"
 
 #: storage/models.py:207
 msgid "Determine how many days shall be between scrubs"
-msgstr "Bestäm hur många dagar skall vara mellan skurar"
+msgstr "Bestäm hur många dagar skall vara mellan skrubbningar"
 
 #: storage/models.py:217 system/models.py:343 system/models.py:495
 #: templates/storage/scrub.html:7 templates/system/cronjob.html:5
@@ -3968,11 +3967,11 @@ msgstr "Aktiverad"
 
 #: storage/models.py:248
 msgid "ZFS Scrub"
-msgstr "ZFS Scrub"
+msgstr "ZFS-skrubbning"
 
 #: storage/models.py:249
 msgid "ZFS Scrubs"
-msgstr "ZFS Scrubs"
+msgstr "ZFS-skrubbningar"
 
 #: storage/models.py:263 system/models.py:391 system/models.py:600
 msgid "Every minute"
@@ -4331,7 +4330,7 @@ msgstr "Volymen har framgångsrikt avlägsnas"
 
 #: storage/views.py:788
 msgid "The scrub process has begun"
-msgstr "Skrubb processen har börjat"
+msgstr "Skrubbningsprocessen har börjat"
 
 #: storage/views.py:922
 msgid "Disk successfully wiped"
@@ -4430,7 +4429,7 @@ msgstr "Tidszon"
 
 #: system/models.py:80
 msgid "Syslog server"
-msgstr "Syslog server"
+msgstr "Syslog-server"
 
 #: system/models.py:92 templates/system/ntpserver.html:5
 msgid "Address"
@@ -4533,9 +4532,8 @@ msgstr "Aktivera skärmsläckare"
 #~ msgstr "Aktivera speciell system optimering"
 
 #: system/models.py:169
-#, fuzzy
 msgid "Enable powerd (Power Saving Daemon)"
-msgstr "Aktivera powerd (Energisparläges-tjänst)"
+msgstr "Aktivera powerd (Tjänst för energibesparing)"
 
 #~ msgid "Enable Zeroconf/Bonjour"
 #~ msgstr "Aktivera Noll-konfigurerings / Bonjour"
@@ -5102,7 +5100,7 @@ msgstr "Forum"
 
 #: templates/freeadmin/index.html:59
 msgid "Community Forum"
-msgstr "Community Forum"
+msgstr "Community-forum"
 
 #: templates/freeadmin/index.html:64
 msgid "IRC (Chat)"
@@ -5146,7 +5144,7 @@ msgstr "Supportärenden"
 
 #: templates/freeadmin/index.html:84
 msgid "Bug Tracker"
-msgstr "Bug Tracker"
+msgstr "Felrapporteringssystem"
 
 #: templates/freeadmin/index.html:89
 msgid "Documentation"
@@ -5319,7 +5317,7 @@ msgstr "Importera"
 #: templates/plugins/jailpbi.html:3 templates/system/wizard.html:2
 #, python-format
 msgid "Step %(step)s of %(step_count)s"
-msgstr "Steg %(step) av %(step_count)"
+msgstr "Steg %(step)s av %(step_count)s"
 
 #~ msgid "Upload Jail PBI"
 #~ msgstr "Ladda upp Jail PBI"
@@ -5731,7 +5729,7 @@ msgstr "Ändra rättigheter"
 #: templates/storage/permission.html:5
 #, python-format
 msgid "Change permission on %(path)s to"
-msgstr "Ändra behörighet på %(väg)ar till"
+msgstr "Ändra behörighet på %(path)s till"
 
 #: templates/storage/replications.html:4 templates/storage/replications.html:6
 msgid "Add Replication"
@@ -5778,8 +5776,7 @@ msgstr ""
 msgid ""
 "Scrub is currently running! Are you sure you want to STOP the scrub process?"
 msgstr ""
-"Scrub är för närvarande igång! Är du säker på att du vill stoppa scrub "
-"processen?"
+"Skrubbning pågår! Är du säker på att du vill stoppa skrubbningsprocessen?"
 
 #: templates/storage/scrub_confirm.html:8
 msgid "Are you sure you want to scrub?"
@@ -5861,7 +5858,7 @@ msgstr "varje dag"
 #: templates/storage/volume_detach.html:8
 #, python-format
 msgid "You have %(used)s of used space within this volume"
-msgstr "Du har %(använt) av det tillgängliga utrymme i denna volym"
+msgstr "Du har %(used)s av använt utrymme i denna volym"
 
 #: templates/storage/volume_edit.html:3
 msgid "Edit ZFS Volume"
@@ -6165,12 +6162,12 @@ msgstr "Volymen %s status är NERGRADERAD"
 #: tools/alert.py:115
 #, python-format
 msgid "The volume %(volume)s status is %(status)s: %(message)s"
-msgstr "Volymen %(volym)s status är %(status)s: %(meddelande)s"
+msgstr "Volymen %(volume)s status är %(status)s: %(message)s"
 
 #: tools/alert.py:119
 #, python-format
 msgid "The volume %(volume)s status is %(status)s"
-msgstr "Volymen %(volym)s status är %(status)s"
+msgstr "Volymen %(volume)s status är %(status)s"
 
 #~ msgid ""
 #~ "You have to change the password for the admin user (currently no password is "
@@ -6466,7 +6463,7 @@ msgstr "Beskrivning av ärendet."
 
 #: system/models.py:69
 msgid "WebGUI HTTP Port"
-msgstr "WebGUI HTTP Port"
+msgstr "WebGUI HTTP-Port"
 
 #: choices.py:173
 msgid "LANMAN1"
@@ -6522,11 +6519,11 @@ msgstr "Bekräfta nytt lösenord"
 
 #: account/forms.py:514
 msgid "Home directory cannot contain colons"
-msgstr "Hemkatalogen får inte innehålla kolon"
+msgstr "Hemkatalogens namn får inte innehålla kolon"
 
 #: account/models.py:139
 msgid "Built-in User"
-msgstr "Inbyggd användare"
+msgstr "Fördefinierad användare"
 
 #: api/resources.py:888
 #: storage/models.py:745
@@ -6582,7 +6579,7 @@ msgstr "IPv6-adress"
 
 #: jails/models.py:332
 msgid "Jail Root"
-msgstr "Jail Root"
+msgstr "Jail-rotkatalog"
 
 #: jails/models.py:333
 msgid "Path where to store jail data"
@@ -7171,9 +7168,8 @@ msgid "Enable High Speed Ciphers"
 msgstr ""
 
 #: storage/forms.py:2237
-#, fuzzy
 msgid "A scrub with this volume already exists."
-msgstr "En grupp med det användarnamnet finns redan."
+msgstr "Det finns redan en skrubbning hos den här volymen."
 
 #: storage/forms.py:2320
 #, fuzzy
@@ -7253,9 +7249,8 @@ msgid "The pool failed to upgraded: %s"
 msgstr ""
 
 #: support/models.py:49
-#, fuzzy
 msgid "Support"
-msgstr "Stöd för EA"
+msgstr "Support"
 
 #: system/forms.py:86
 msgid "The volume %s is locked by encryption"
@@ -7290,9 +7285,8 @@ msgid "WebGUI HTTP -> HTTPS Redirect"
 msgstr "WebGUI HTTP Port"
 
 #: system/models.py:115
-#, fuzzy
 msgid "Directory Service"
-msgstr "Katalogrättigheter"
+msgstr "Katalogtjänster"
 
 #: system/models.py:205
 #, fuzzy
@@ -8127,9 +8121,8 @@ msgid "ZFS Volume Manager"
 msgstr "Volymhanterare"
 
 #: storage/views.py:783
-#, fuzzy
 msgid "The scrub process has stopped"
-msgstr "Skrubb processen har börjat"
+msgstr "Skrubbningsprocessen har stoppat"
 
 #: storage/views.py:946
 msgid "Passphrase created"
@@ -8364,9 +8357,8 @@ msgid "Date"
 msgstr ""
 
 #: templates/storage/volumestatus_datagrid.html:21
-#, fuzzy
 msgid "Scrub"
-msgstr "ZFS Scrub"
+msgstr "Skrubbning"
 
 #: templates/storage/wizard.html:92
 #, fuzzy
@@ -8389,7 +8381,7 @@ msgstr "Lägg till Portal"
 
 #: templates/support/index.html:57
 msgid "Submit"
-msgstr ""
+msgstr "Skicka in"
 
 #: templates/system/firmware_wizard_0.html:6
 #: templates/system/firmware_wizard_1.html:21
@@ -8408,12 +8400,16 @@ msgid ""
 "Some storage pools are doing resilver/scrub, are you really sure you want to "
 "proceed with <strong>REBOOT</strong>?"
 msgstr ""
+"Vissa lagringspooler utför lagning/skrubbning, är du verkligen säker på att "
+"du vill fortsätta med <strong>OMSTART</strong>?"
 
 #: templates/system/shutdown_dialog2.html:4
 msgid ""
 "Some storage pools are doing resilver/scrub, are you really sure you want to "
 "proceed with <strong>SHUTDOWN</strong>?"
 msgstr ""
+"Vissa lagringspooler utför lagning/skrubbning, är du verkligen säker på att "
+"du vill fortsätta med <strong>AVSTÄNGNING</strong>?"
 
 #: choices.py:171
 msgid "CORE"
@@ -8980,9 +8976,8 @@ msgstr ""
 
 #: storage/forms.py:597
 #: templates/storage/zfswizard.html:41
-#, fuzzy
 msgid "Encryption"
-msgstr "Krypteringsläge"
+msgstr "Kryptering"
 
 #: storage/forms.py:605
 #: storage/forms.py:1448
@@ -9212,9 +9207,8 @@ msgid "Alert"
 msgstr ""
 
 #: templates/freeadmin/generic_model_datagrid.html:10
-#, fuzzy
 msgid "Add"
-msgstr "Lägg till %s"
+msgstr "Lägg till"
 
 #: templates/freeadmin/generic_model_datagrid.html:177
 msgid "No entry has been found"
@@ -9458,9 +9452,8 @@ msgstr "Informell"
 #: tasks/nav.py:4
 #: templates/menubar.html:13
 #: templates/tasks/index.html:1
-#, fuzzy
 msgid "Tasks"
-msgstr "Rsync uppgifter"
+msgstr "Uppgifter"
 
 #: templates/services/core.html:32
 #, fuzzy
@@ -9946,9 +9939,8 @@ msgid "Are you sure?"
 msgstr "Är du säker på att du vill radera?"
 
 #: templates/system/initialwizard_confirm.html:39
-#, fuzzy
 msgid "Confirm"
-msgstr "Bekräfta lösenord"
+msgstr "Bekräfta"
 
 #: templates/system/initialwizard_confirm.html:46
 msgid "Return to Wizard"
@@ -9972,9 +9964,8 @@ msgid "Estimated Total Size"
 msgstr ""
 
 #: freeadmin/navtree.py:256
-#, fuzzy
 msgid "Wizard"
-msgstr "Initiator"
+msgstr "Guide"
 
 #: services/forms.py:302
 #, fuzzy
@@ -10227,7 +10218,7 @@ msgstr ""
 
 #: directoryservice/models.py:1049
 msgid "Idmap Backend"
-msgstr "Idmap Backend"
+msgstr "Idmap Back-end"
 
 #: directoryservice/models.py:1056
 msgid "Samba Schema"
@@ -10670,9 +10661,8 @@ msgid "WebDAV Settings"
 msgstr "LDAP Inställningar"
 
 #: templates/storage/index.html:24
-#, fuzzy
 msgid "Scrubs"
-msgstr "ZFS Scrub"
+msgstr "Skrubbningar"
 
 #: templates/storage/index.html:31
 #, fuzzy
@@ -10756,9 +10746,8 @@ msgstr "Skapa ZFS volymen på %(namn)"
 
 #: templates/system/upgrade_edit.html:13
 #: templates/system/upgrade_edit.html:15
-#, fuzzy
 msgid "Manual Update"
-msgstr "Tillämpa uppdateringen"
+msgstr "Manuell uppdatering"
 
 #: services/models.py:268
 msgid ""
@@ -11277,9 +11266,8 @@ msgid "Do you want to scrub your boot pool now?"
 msgstr "Är du säker på att du vill ta bort?"
 
 #: templates/system/bootenv_datagrid.html:13
-#, fuzzy
 msgid "Scrub Boot"
-msgstr "ZFS Scrub"
+msgstr "Skrubba boot-enhet"
 
 #: templates/system/bootenv_datagrid.html:21
 msgid "Boot Volume Condition"
@@ -11335,7 +11323,7 @@ msgstr ""
 
 #: directoryservice/models.py:1099
 msgid "LDAP timeout"
-msgstr "LDAP timeout"
+msgstr "LDAP-avbrottstid"
 
 #: directoryservice/models.py:1100
 msgid "Timeout for LDAP related commands."
@@ -12568,9 +12556,8 @@ msgid "VCenter Configuration"
 msgstr "Globala inställningar"
 
 #: vcp/nav.py:44
-#, fuzzy
 msgid "vCenter Plugin Configuration"
-msgstr "Rikta Global konfiguration"
+msgstr "vCenter Tilläggskonfiguration"
 
 #: vcp/views.py:53
 msgid "vCenter plugin installed successfully."
