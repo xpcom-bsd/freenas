@@ -8,16 +8,16 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-06-04 02:07-0700\n"
-"PO-Revision-Date: 2017-06-27 12:49+0000\n"
-"Last-Translator: Chen <871670172@qq.com>\n"
-"Language-Team: Simplified Chinese "
+"PO-Revision-Date: 2017-07-20 09:10+0000\n"
+"Last-Translator: gamexg <gamexg@gmail.com>\n"
+"Language-Team: Chinese (Simplified) "
 "<http://weblate.trueos.org/projects/freenas/django/zh_Hans/>\n"
 "Language: zh_Hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Weblate 2.10-dev\n"
+"X-Generator: Weblate 2.13\n"
 "X-POOTLE-MTIME: 1463296042.0\n"
 
 #: choices.py:40
@@ -3963,8 +3963,9 @@ msgid "Replication Tasks"
 msgstr "Replication 任务"
 
 #: storage/models.py:722 system/models.py:526 templates/storage/tasks.html:22
+#, fuzzy
 msgid "Recursive"
-msgstr "循环"
+msgstr "包含子数据集"
 
 #: storage/models.py:726
 msgid "Snapshot lifetime value"
