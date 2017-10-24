@@ -41,6 +41,12 @@ from freenasUI.common.forms import ModelForm
 from freenasUI.common.freenasldap import (
     FreeNAS_ActiveDirectory,
     FreeNAS_LDAP,
+    FREENAS_LDAP_NOSSL,
+    FREENAS_LDAP_USESSL,
+    FREENAS_LDAP_USETLS,
+    FLAGS_SASL_GSSAPI,
+    FLAGS_LDAP_SSL,
+    FLAGS_LDAP_TLS
 )
 from freenasUI.common.freenassysctl import freenas_sysctl as _fs
 from freenasUI.common.pipesubr import run
@@ -359,7 +365,7 @@ class ActiveDirectoryForm(ModelForm):
         ad_dcport = 389
 
         ad_ssl = self.cleaned_data.get('ad_ssl')
-        if ad_ssl == 'on':
+        if ad_ssl == FREENAS_LDAP_USESSL:
             ad_dcport = 636
 
         if not ad_dcname:
@@ -402,7 +408,7 @@ class ActiveDirectoryForm(ModelForm):
         ad_gcport = 3268
 
         ad_ssl = self.cleaned_data.get('ad_ssl')
-        if ad_ssl == 'on':
+        if ad_ssl == FREENAS_LDAP_USESSL:
             ad_gcport = 3269
 
         if not ad_gcname:
@@ -486,13 +492,16 @@ class ActiveDirectoryForm(ModelForm):
         ad_kerberos_principal = cdata["ad_kerberos_principal"]
         workgroup = None
 
+        flags = FreeNAS_ActiveDirectory.sslflags(ssl)
+        flags |= FLAGS_SASL_GSSAPI
+
         if certificate:
             certificate = certificate.get_certificate_path()
 
         args = {
             'domain': domain,
             'site': site,
-            'ssl': ssl,
+            'flags': flags,
             'certfile': certificate
         }
 
@@ -510,13 +519,16 @@ class ActiveDirectoryForm(ModelForm):
                 raise forms.ValidationError("No domain account password specified")
 
             try:
+                principal = "%s@%s" % (bindname, domain.upper())
+
+                FreeNAS_ActiveDirectory.get_kerberos_ticket_by_auth(principal, bindpw)
                 FreeNAS_ActiveDirectory.validate_credentials(
                     domain,
                     site=site,
-                    ssl=ssl,
                     certfile=certificate,
                     binddn=binddn,
-                    bindpw=bindpw
+                    bindpw=bindpw,
+                    flags=flags,
                 )
 
             except LDAPError as e:
@@ -564,7 +576,7 @@ class ActiveDirectoryForm(ModelForm):
         else:
             log.warn("Unable to determine workgroup name")
 
-        if ssl in ("off", None):
+        if not (flags & FLAGS_LDAP_SSL):
             return cdata
 
         if not certificate:
@@ -641,7 +653,7 @@ class ActiveDirectoryForm(ModelForm):
         try:
             sm = ServiceMonitor.objects.get(sm_name=sm_name)
         except Exception as e:
-            log.debug("XXX: Unable to find ServiceMonitor: %s", e)
+            log.debug("Unable to find ServiceMonitor: %s", e)
             pass
 
         #
@@ -654,7 +666,7 @@ class ActiveDirectoryForm(ModelForm):
         if not sm:
             try:
                 log.debug(
-                    "XXX: fqdn=%s dcport=%s frequency=%s retry=%s enable=%s",
+                    "fqdn=%s dcport=%s frequency=%s retry=%s enable=%s",
                     fqdn, dcport, monit_frequency,
                     monit_retry, enable_monitoring
                 )
@@ -668,7 +680,7 @@ class ActiveDirectoryForm(ModelForm):
                     sm_enable=enable_monitoring
                 )
             except Exception as e:
-                log.debug("XXX: Unable to create ServiceMonitor: %s", e)
+                log.debug("Unable to create ServiceMonitor: %s", e)
                 raise MiddlewareError(
                     _("Unable to create ServiceMonitor: %s" % e),
                 )
@@ -689,7 +701,7 @@ class ActiveDirectoryForm(ModelForm):
             try:
                 sm.save(force_update=True)
             except Exception as e:
-                log.debug("XXX: Unable to create ServiceMonitor: %s", e)
+                log.debug("Unable to create ServiceMonitor: %s", e)
                 raise MiddlewareError(
                     _("Unable to save ServiceMonitor: %s" % e),
                 )
@@ -832,7 +844,10 @@ class LDAPForm(ModelForm):
 
         certfile = None
         ssl = cdata.get("ldap_ssl")
-        if ssl in ('start_tls', 'on'):
+
+        flags = FreeNAS_LDAP.sslflags(ssl)
+
+        if (flags & FLAGS_LDAP_TLS) or (flags & FLAGS_LDAP_SSL):
             certificate = cdata["ldap_certificate"]
             certfile = get_certificateauthority_path(certificate)
 
@@ -842,7 +857,7 @@ class LDAPForm(ModelForm):
             bindpw=bindpw,
             basedn=basedn,
             certfile=certfile,
-            ssl=ssl
+            flags=flags
         )
 
         if fl.has_samba_schema():
@@ -893,8 +908,10 @@ class LDAPForm(ModelForm):
         hostname = cdata.get("ldap_hostname")
         ssl = cdata.get("ldap_ssl")
 
+        flags = FreeNAS_LDAP.sslflags(ssl)
+
         certfile = None
-        if ssl in ('start_tls', 'on'):
+        if (flags & FLAGS_LDAP_TLS) or (flags & FLAGS_LDAP_SSL):
             certificate = cdata["ldap_certificate"]
             if not certificate:
                 raise forms.ValidationError(
@@ -903,8 +920,9 @@ class LDAPForm(ModelForm):
                 certfile = get_certificateauthority_path(certificate)
 
         port = 389
-        if ssl == "on":
+        if flags & FLAGS_LDAP_SSL:
             port = 636
+
         if hostname:
             parts = hostname.split(':')
             hostname = parts[0]
@@ -923,7 +941,7 @@ class LDAPForm(ModelForm):
                 basedn=basedn,
                 port=port,
                 certfile=certfile,
-                ssl=ssl
+                flags=flags
             )
         except LDAPError as e:
             log.debug("LDAPError: type = %s", type(e))

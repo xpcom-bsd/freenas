@@ -92,11 +92,13 @@ FREENAS_LDAP_PAGESIZE = get_freenas_var("FREENAS_LDAP_PAGESIZE", 1024)
 ldap.protocol_version = FREENAS_LDAP_VERSION
 ldap.set_option(ldap.OPT_REFERRALS, FREENAS_LDAP_REFERRALS)
 
-FLAGS_DBINIT = 0x00010000
-FLAGS_AD_ENABLED = 0x00100000
+FLAGS_DBINIT       = 0x00010000
+FLAGS_AD_ENABLED   = 0x00100000
 FLAGS_LDAP_ENABLED = 0x00200000
-FLAGS_PREFER_IPv6 = 0x00400000
-FLAGS_SASL_GSSAPI = 0x00800000
+FLAGS_PREFER_IPv6  = 0x00400000
+FLAGS_SASL_GSSAPI  = 0x00800000
+FLAGS_LDAP_SSL     = 0x01000000
+FLAGS_LDAP_TLS     = 0x02000000
 
 
 class FreeNAS_LDAP_Directory_Exception(Exception):
@@ -114,7 +116,7 @@ class FreeNAS_LDAP_Exception(FreeNAS_LDAP_Directory_Exception):
 class FreeNAS_LDAP_Directory(object):
     @staticmethod
     def validate_credentials(
-        hostname, port=389, basedn=None, binddn=None, bindpw=None, ssl='off',
+        hostname, port=389, basedn=None, binddn=None, bindpw=None, flags=0,
         certfile=None, errors=[]
     ):
         FreeNAS_LDAP(
@@ -124,8 +126,32 @@ class FreeNAS_LDAP_Directory(object):
             bindpw=bindpw,
             basedn=basedn,
             certfile=certfile,
-            ssl=ssl
+            flags=flags
         ).open()
+
+    @staticmethod
+    def sslstr(flags=0):
+        ssl = FREENAS_LDAP_NOSSL
+
+        if flags & FLAGS_LDAP_SSL:
+            ssl = FREENAS_LDAP_USESSL
+        if flags & FLAGS_LDAP_TLS:
+            ssl = FREENAS_LDAP_USETLS
+
+        return ssl
+
+    @staticmethod
+    def sslflags(ssl):
+        flags = 0
+
+        if not ssl:
+            return flags
+        if ssl.lower() == FREENAS_LDAP_USESSL:
+            return FLAGS_LDAP_SSL
+        if ssl.lower() == FREENAS_LDAP_USETLS:
+            return FLAGS_LDAP_TLS
+
+        return 0
 
     def __init__(self, **kwargs):
         log.debug("FreeNAS_LDAP_Directory.__init__: enter")
@@ -141,11 +167,13 @@ class FreeNAS_LDAP_Directory(object):
         self.basedn = kwargs.get('basedn', None)
         self.anonbind = kwargs.get('anonbind', False)
 
-        self.ssl = FREENAS_LDAP_NOSSL
-        if 'ssl' in kwargs and kwargs['ssl'] is not None:
-            self.ssl = kwargs['ssl']
-            if self.ssl == FREENAS_LDAP_USESSL and self.port is None:
-                self.port = FREENAS_LDAP_SSL_PORT
+        self.flags = 0
+        if 'flags' in kwargs and kwargs['flags'] is not None:
+            self.flags = kwargs['flags']
+
+        if self.flags & FLAGS_LDAP_SSL:
+            self.port = FREENAS_LDAP_SSL_PORT
+
         self.certfile = kwargs.get('certfile', None)
 
         if self.port is None:
@@ -162,10 +190,6 @@ class FreeNAS_LDAP_Directory(object):
         if 'pagesize' in kwargs and kwargs['pagesize'] is not None:
             self.pagesize = kwargs['pagesize']
 
-        self.flags = 0
-        if 'flags' in kwargs and kwargs['flags'] is not None:
-            self.flags = kwargs['flags']
-
         self._handle = None
         self._isopen = False
         self._cache = FreeNAS_LDAP_QueryCache()
@@ -173,8 +197,8 @@ class FreeNAS_LDAP_Directory(object):
 
         log.debug(
             "FreeNAS_LDAP_Directory.__init__: "
-            "host = %s, port = %ld, binddn = %s, basedn = %s, ssl = %s",
-            self.host, self.port, self.binddn, self.basedn, self.ssl
+            "host = %s, port = %ld, binddn = %s, basedn = %s, flags = 0x%08x",
+            self.host, self.port, self.binddn, self.basedn, self.flags
         )
         log.debug("FreeNAS_LDAP_Directory.__init__: leave")
 
@@ -213,14 +237,10 @@ class FreeNAS_LDAP_Directory(object):
             return None
 
         uri = None
-        if self.ssl in (FREENAS_LDAP_NOSSL, FREENAS_LDAP_USETLS):
-            proto = "ldap"
+        proto = "ldap"
 
-        elif self.ssl == FREENAS_LDAP_USESSL:
+        if self.flags & FLAGS_LDAP_SSL:
             proto = "ldaps"
-
-        else:
-            proto = "ldap"
 
         uri = "%s://%s:%d" % (proto, self.host, self.port)
         return uri
@@ -292,7 +312,7 @@ class FreeNAS_LDAP_Directory(object):
             self._handle.set_option(ldap.OPT_REFERRALS, FREENAS_LDAP_REFERRALS)
             self._handle.set_option(ldap.OPT_NETWORK_TIMEOUT, 10.0)
 
-            if self.ssl in (FREENAS_LDAP_USESSL, FREENAS_LDAP_USETLS):
+            if (self.flags & FLAGS_LDAP_SSL) or (self.flags & FLAGS_LDAP_TLS):
                 self._handle.set_option(ldap.OPT_X_TLS_ALLOW, 1)
                 if self.certfile:
                     self._handle.set_option(
@@ -308,7 +328,7 @@ class FreeNAS_LDAP_Directory(object):
                     ldap.OPT_X_TLS_DEMAND
                 )
 
-            if self.ssl == FREENAS_LDAP_USETLS:
+            if self.flags & FLAGS_LDAP_TLS:
                 try:
                     self._handle.start_tls_s()
                     log.debug("FreeNAS_LDAP_Directory.open: started TLS")
@@ -321,6 +341,10 @@ class FreeNAS_LDAP_Directory(object):
             if self.anonbind:
                 bind_method = self._do_anonymous_bind
             elif self.flags & FLAGS_SASL_GSSAPI:
+                # SASL GSSAPI black magic
+                self._handle.set_option(ldap.OPT_REFERRALS, False)
+                self._handle.set_option(ldap.OPT_X_SASL_NOCANON, True)
+                
                 bind_method = self._do_sasl_gssapi_bind
             elif self.binddn and self.bindpw:
                 bind_method = self._do_authenticated_bind
@@ -528,7 +552,6 @@ class FreeNAS_LDAP_Base(FreeNAS_LDAP_Directory):
             'binddn',
             'bindpw',
             'basedn',
-            'ssl',
             'usersuffix',
             'groupsuffix',
             'machinesuffix',
@@ -547,7 +570,8 @@ class FreeNAS_LDAP_Base(FreeNAS_LDAP_Directory):
             'keytab_file',
             'idmap_backend',
             'timeout',
-            'dns_timeout'
+            'dns_timeout',
+            'flags'
         ]
 
     def __set_defaults(self):
@@ -597,6 +621,7 @@ class FreeNAS_LDAP_Base(FreeNAS_LDAP_Directory):
                         kwargs['port'] = port
                     kwargs[newkey] = ldap.__dict__[key]
                     if ldap.__dict__['ldap_ssl'] == FREENAS_LDAP_USESSL:
+                        self.flags &= FLAGS_LDAP_SSL
                         kwargs['port'] = 636
 
                 elif newkey in (
@@ -1188,7 +1213,7 @@ class FreeNAS_ActiveDirectory_Base(object):
         return dcs
 
     @staticmethod
-    def get_domain_controllers(domain, site=None, ssl=FREENAS_LDAP_NOSSL):
+    def get_domain_controllers(domain, site=None, flags=0):
         dcs = []
         if not domain:
             return dcs
@@ -1198,7 +1223,8 @@ class FreeNAS_ActiveDirectory_Base(object):
             host = "_ldap._tcp.%s._sites.dc._msdcs.%s" % (site, domain)
 
         dcs = FreeNAS_ActiveDirectory_Base.get_SRV_records(host)
-        if ssl == FREENAS_LDAP_USESSL:
+
+        if flags & FLAGS_LDAP_SSL:
             for dc in dcs:
                 dc.port = 636
 
@@ -1216,7 +1242,7 @@ class FreeNAS_ActiveDirectory_Base(object):
         return pdcs
 
     @staticmethod
-    def get_global_catalog_servers(domain, site=None, ssl=FREENAS_LDAP_NOSSL):
+    def get_global_catalog_servers(domain, site=None, flags=0):
         gcs = []
         if not domain:
             return gcs
@@ -1226,7 +1252,8 @@ class FreeNAS_ActiveDirectory_Base(object):
             host = "_gc._tcp.%s._sites.%s" % (site, domain)
 
         gcs = FreeNAS_ActiveDirectory_Base.get_SRV_records(host)
-        if ssl == FREENAS_LDAP_USESSL:
+
+        if flags & FLAGS_LDAP_SSL: 
             for gc in gcs:
                 gc.port = 3269
 
@@ -1284,11 +1311,11 @@ class FreeNAS_ActiveDirectory_Base(object):
 
     @staticmethod
     def validate_credentials(
-        domain, site=None, binddn=None, bindpw=None, ssl='off', certfile=None
+        domain, site=None, binddn=None, bindpw=None, flags=0, certfile=None
     ):
         best_host = None
 
-        dcs = FreeNAS_ActiveDirectory_Base.get_domain_controllers(domain, site, ssl)
+        dcs = FreeNAS_ActiveDirectory_Base.get_domain_controllers(domain, site, flags)
         if not dcs:
             raise FreeNAS_ActiveDirectory_Exception(
                 "Unable to find domain controllers for {0}".format(domain)
@@ -1299,7 +1326,7 @@ class FreeNAS_ActiveDirectory_Base(object):
             (dchost, dcport) = best_host
             FreeNAS_LDAP(
                 host=dchost, port=dcport, binddn=binddn, bindpw=bindpw,
-                ssl=ssl, certfile=certfile
+                flags=flags, certfile=certfile
             ).open()
         else:
             raise FreeNAS_ActiveDirectory_Exception(
@@ -1324,13 +1351,13 @@ class FreeNAS_ActiveDirectory_Base(object):
 
     @staticmethod
     def get_workgroup_name(
-        domain, site=None, binddn=None, bindpw=None, ssl='off', certfile=None,
+        domain, site=None, binddn=None, bindpw=None, flags=0, certfile=None,
         keytab_principal=None, keytab_file=None, errors=[]
     ):
 
         f = FreeNAS_ActiveDirectory(
             domainname=domain, site=site, binddn=binddn, bindpw=bindpw,
-            ssl=ssl, certfile=certfile, keytab_principal=keytab_principal,
+            flags=flags, certfile=certfile, keytab_principal=keytab_principal,
             keytab_file=keytab_file
         )
         return f.get_netbios_name()
@@ -1342,6 +1369,30 @@ class FreeNAS_ActiveDirectory_Base(object):
             ret = val
         return ret
 
+    @staticmethod
+    def sslstr(flags=0):
+        ssl = FREENAS_LDAP_NOSSL
+
+        if flags & FLAGS_LDAP_SSL:
+            ssl = FREENAS_LDAP_USESSL
+        if flags & FLAGS_LDAP_TLS:
+            ssl = FREENAS_LDAP_USETLS
+
+        return ssl
+
+    @staticmethod
+    def sslflags(ssl):
+        flags = 0
+
+        if not ssl:
+            return flags
+        if ssl.lower() == FREENAS_LDAP_USESSL:
+            return FLAGS_LDAP_SSL
+        if ssl.lower() == FREENAS_LDAP_USETLS:
+            return FLAGS_LDAP_TLS
+
+        return 0
+
     def __keys(self):
         return [
             'machine',
@@ -1349,7 +1400,6 @@ class FreeNAS_ActiveDirectory_Base(object):
             'netbiosname',
             'bindname',
             'bindpw',
-            'ssl',
             'certfile',
             'verbose_logging',
             'unix_extensions',
@@ -1419,8 +1469,8 @@ class FreeNAS_ActiveDirectory_Base(object):
         self.pagesize = FREENAS_LDAP_PAGESIZE
         self.machine = "%s$" % get_hostname()
 
-        # self.flags = FLAGS_SASL_GSSAPI
-        self.flags = 0
+        self.flags = FLAGS_SASL_GSSAPI
+        #self.flags = 0
 
         log.debug("FreeNAS_ActiveDirectory_Base.__set_defaults: leave")
 
@@ -1465,6 +1515,60 @@ class FreeNAS_ActiveDirectory_Base(object):
 
         return principal
 
+    @staticmethod
+    def kerberos_cache_has_ticket_static():
+        res = False
+
+        p = pipeopen("/usr/bin/klist -t")
+        p.communicate()
+        if p.returncode == 0:
+            res = True
+
+        return res
+
+    @staticmethod
+    def get_kerberos_ticket_by_auth(principal, bindpw):
+        (f, filename) = tempfile.mkstemp(dir="/tmp", text=True)
+
+        os.chmod(filename, 0o600)
+        os.write(f, bindpw.strip().encode('utf-8'))
+        os.close(f)
+
+        res = False
+        kinit = False
+        args = [
+            "/usr/bin/kinit",
+            "--renewable",
+            "--password-file=%s" % filename,
+            "%s" % principal
+        ]
+
+        p = pipeopen(' '.join(args))
+        p.communicate()
+        if p.returncode != 0:
+            res = False
+
+        if res is not False:
+            kinit = True
+
+        if os.access(filename, os.F_OK):
+            try:
+                os.unlink(filename)
+            except:  
+                pass
+
+        if kinit:
+            i = 0
+            while i < 10:
+                if FreeNAS_ActiveDirectory.kerberos_cache_has_ticket_static():
+                    res = True
+                    break
+
+                time.sleep(1)
+                i += 1
+
+        return res
+
     def get_kerberos_ticket(self):
         res = False
         kinit = False
@@ -1500,25 +1604,31 @@ class FreeNAS_ActiveDirectory_Base(object):
             if krb_principal and krb_principal.upper() == principal.upper():
                 return True
 
-            f = tempfile.NamedTemporaryFile(mode='w+', dir="/tmp")
-            os.chmod(f.name, 0o600)
-            f.write(self.bindpw)
+            (f, filename) = tempfile.mkstemp(dir="/tmp", text=True)
+            os.chmod(filename, 0o600)
+            os.write(f, self.bindpw.strip().encode('utf-8'))
+            os.close(f)
 
             args = [
                 "/usr/bin/kinit",
                 "--renewable",
-                "--password-file=%s" % f.name,
+                "--password-file=%s" % filename,
                 "%s" % principal
             ]
 
-            (returncode, stdout, stderr) = run(' '.join(args), timeout=self.timeout)
-            if returncode != 0:
+            p = pipeopen(' '.join(args))
+            p.communicate()
+            if p.returncode != 0:
                 res = False
 
             if res is not False:
                 kinit = True
 
-            f.close()
+            if os.access(filename, os.F_OK):
+                try:
+                    os.unlink(filename)
+                except:
+                    pass
 
         if kinit:
             i = 0
@@ -1604,7 +1714,7 @@ class FreeNAS_ActiveDirectory_Base(object):
                     if kr:
                         kwargs['kerberos_realm'] = kr
                         kwargs['krb_realm'] = kr.krb_realm
-                        # self.flags |= FLAGS_SASL_GSSAPI
+                        self.flags |= FLAGS_SASL_GSSAPI
 
                 elif newkey == 'kerberos_principal_id':
                     kp = ad.ad_kerberos_principal
@@ -1613,7 +1723,7 @@ class FreeNAS_ActiveDirectory_Base(object):
                         kwargs['kerberos_principal'] = kp
                         kwargs['keytab_principal'] = kp.principal_name
                         kwargs['keytab_file'] = '/etc/kerberos/%s' % kp.principal_keytab.keytab_name
-                        # self.flags |= FLAGS_SASL_GSSAPI
+                        self.flags |= FLAGS_SASL_GSSAPI
 
                 else:
                     kwargs[newkey] = ad.__dict__[key] \
@@ -1650,7 +1760,7 @@ class FreeNAS_ActiveDirectory_Base(object):
         if self.dcname:
             (self.dchost, self.dcport) = self.__name_to_host(self.dcname, 389)
         if not self.dchost:
-            dcs = self.get_domain_controllers(self.domainname, site=self.site, ssl=self.ssl)
+            dcs = self.get_domain_controllers(self.domainname, site=self.site, flags=self.flags)
             if not dcs:
                 raise FreeNAS_ActiveDirectory_Exception(
                     "Unable to find domain controllers for %s" % self.domainname)
@@ -1663,7 +1773,7 @@ class FreeNAS_ActiveDirectory_Base(object):
         if not self.gchost:
             root = self.get_root_domain()
             if root:
-                gcs = self.get_global_catalog_servers(root, site=self.site, ssl=self.ssl)
+                gcs = self.get_global_catalog_servers(root, site=self.site, flags=self.flags)
                 if not gcs:
                     raise FreeNAS_ActiveDirectory_Exception(
                         "Unable to find global catalog servers for %s" % root
@@ -1700,14 +1810,17 @@ class FreeNAS_ActiveDirectory_Base(object):
         self.set_kerberos_server()
         self.set_kpasswd_server()
 
-        flags = self.flags & ~ FLAGS_SASL_GSSAPI
-        if self.keytab_principal:
-            flags |= FLAGS_SASL_GSSAPI
+        #
+        # XXX always use GSSAPI with Active Directory
+        #
+        #flags = self.flags & ~ FLAGS_SASL_GSSAPI
+        #if self.keytab_principal:
+        #    flags |= FLAGS_SASL_GSSAPI
 
         self.dchandle = FreeNAS_LDAP_Directory(
             binddn=self.binddn, bindpw=self.bindpw,
             host=self.dchost, port=self.dcport,
-            ssl=self.ssl, certfile=self.certfile, flags=flags)
+            certfile=self.certfile, flags=self.flags)
         self.dchandle.open()
         self.dchandle.pagesize = self.pagesize
 
@@ -1716,7 +1829,7 @@ class FreeNAS_ActiveDirectory_Base(object):
         self.gchandle = FreeNAS_LDAP_Directory(
             binddn=self.binddn, bindpw=self.bindpw,
             host=self.gchost, port=self.gcport,
-            ssl=self.ssl, certfile=self.certfile, flags=flags)
+            certfile=self.certfile, flags=self.flags)
         self.gchandle.open()
         self.gchandle.pagesize = self.pagesize
 
@@ -1815,16 +1928,11 @@ class FreeNAS_ActiveDirectory_Base(object):
         return None
 
     def connected(self):
-        """
-        Although this is named 'connected'.
-        This is stupid. Just keeping it alive for "compatability"
-        Someday will nuke!
-        """
         try:
             self.validate_credentials(
                 self.domainname,
                 site=self.site,
-                ssl=self.ssl,
+                flags=self.flags,
                 certfile=self.certfile,
                 binddn=self.binddn,
                 bindpw=self.bindpw
@@ -2667,7 +2775,7 @@ class FreeNAS_ActiveDirectory_Users(FreeNAS_ActiveDirectory):
             n = d['nETBIOSName']
             self.__users[n] = []
 
-            dcs = self.get_domain_controllers(d['dnsRoot'], ssl=self.ssl)
+            dcs = self.get_domain_controllers(d['dnsRoot'], flags=self.flags)
             if not dcs:
                 raise FreeNAS_ActiveDirectory_Exception(
                     "Unable to find domain controllers for %s" % d['dnsRoot'])
@@ -2980,7 +3088,7 @@ class FreeNAS_ActiveDirectory_Groups(FreeNAS_ActiveDirectory):
             n = d['nETBIOSName']
             self.__groups[n] = []
 
-            dcs = self.get_domain_controllers(d['dnsRoot'], ssl=self.ssl)
+            dcs = self.get_domain_controllers(d['dnsRoot'], flags=self.flags)
             if not dcs:
                 raise FreeNAS_ActiveDirectory_Exception(
                     "Unable to find domain controllers for %s" % d['dnsRoot'])
