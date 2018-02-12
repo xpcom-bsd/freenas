@@ -13,7 +13,7 @@ COMMENT=        FreeNAS UI
 PRODUCT?=
 USES=		python
 
-RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}django110>0:www/py-django110 \
+RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}django110>0:www/py-django111 \
 	uwsgi>0:www/uwsgi \
 	${PYTHON_PKGNAMEPREFIX}django-formtools>0:www/py-django-formtools \
 	${PYTHON_PKGNAMEPREFIX}django-tastypie>0:www/py-django-tastypie \
