@@ -18,7 +18,7 @@ RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}ws4py>0:www/py-ws4py \
 		${PYTHON_PKGNAMEPREFIX}aiohttp>0:www/py-aiohttp \
 		${PYTHON_PKGNAMEPREFIX}aiohttp-wsgi>0:www/py-aiohttp-wsgi \
 		${PYTHON_PKGNAMEPREFIX}Flask>0:www/py-flask \
-		${PYTHON_PKGNAMEPREFIX}boto3>0:devel/py-boto3 \
+		${PYTHON_PKGNAMEPREFIX}boto3>0:www/py-boto3 \
 		${PYTHON_PKGNAMEPREFIX}netif>0:net/py-netif \
 		${PYTHON_PKGNAMEPREFIX}bsd>0:freenas/py-bsd \
 		${PYTHON_PKGNAMEPREFIX}raven>0:devel/py-raven \
