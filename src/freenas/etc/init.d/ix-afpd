@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+name="ix-afpd"
+
+depend()
+{
+	provide ix-afpd
+	before netatalk
+}
+
+start()
+{
+	/usr/local/libexec/nas/generate_afpd_conf.py
+}
+
+stop()
+{
+	return 0
+}
+
