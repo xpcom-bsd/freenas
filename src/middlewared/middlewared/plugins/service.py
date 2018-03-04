@@ -255,7 +255,7 @@ class ServiceService(CRUDService):
         self.logger.debug("Calling: %s(%s) ", action, what)
         f = getattr(self, '_' + action + '_' + what, None)
         if f is None:
-            # Provide generic start/stop/restart verbs for rc.d scripts
+            # Provide generic start/stop/restart verbs for init.d scripts
             if what in self.SERVICE_DEFS:
                 if self.SERVICE_DEFS[what].rc_script:
                     what = self.SERVICE_DEFS[what].rc_script
@@ -309,7 +309,7 @@ class ServiceService(CRUDService):
         """
         The check for started [or not] processes is currently done in 2 steps
         This is the first step which involves a thread StartNotify that watch for event
-        before actually start/stop rc.d scripts
+        before actually start/stop init.d scripts
 
         Returns:
             StartNotify object if the service is known or None otherwise
@@ -654,18 +654,18 @@ class ServiceService(CRUDService):
 
     async def _restart_syslogd(self, **kwargs):
         await self._service("ix-syslogd", "start", quiet=True, **kwargs)
-        await self._system("/etc/local/rc.d/syslog-ng restart")
+        await self._system("/etc/local/init.d/syslog-ng restart")
 
     async def _start_syslogd(self, **kwargs):
         await self._service("ix-syslogd", "start", quiet=True, **kwargs)
-        await self._system("/etc/local/rc.d/syslog-ng start")
+        await self._system("/etc/local/init.d/syslog-ng start")
 
     async def _stop_syslogd(self, **kwargs):
-        await self._system("/etc/local/rc.d/syslog-ng stop")
+        await self._system("/etc/local/init.d/syslog-ng stop")
 
     async def _reload_syslogd(self, **kwargs):
         await self._service("ix-syslogd", "start", quiet=True, **kwargs)
-        await self._system("/etc/local/rc.d/syslog-ng reload")
+        await self._system("/etc/local/init.d/syslog-ng reload")
 
     async def _start_tftp(self, **kwargs):
         await self._service("ix-inetd", "start", quiet=True, **kwargs)
