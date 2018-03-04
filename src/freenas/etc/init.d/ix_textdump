@@ -1,0 +1,41 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+name="ix_textdump"
+
+depend()
+{
+	provide ix_textdump
+	before savecore
+	keyword -jail
+}
+
+start()
+{
+
+	einfo "Setting up system for textdumps."
+        if [ -z "${dumpdev}" ] ; then
+                ewarn "dumpdev not set exiting"
+                return 1
+        fi
+        # watchdog 38 = ~256 seconds or ~4 minutes, see sys/watchdog.h for explanation
+	ddb script "kdb.enter.break=watchdog 38; capture on"
+	ddb script "kdb.enter.sysctl=watchdog 38; capture on"
+	ddb script "kdb.enter.default=write cn_mute 1; watchdog 38; capture on; bt; show allpcpu; ps; alltrace; write cn_mute 0; textdump dump; reset"
+	sysctl debug.ddb.textdump.pending=1
+	sysctl debug.debugger_on_panic=1
+	sysctl debug.ddb.capture.bufsize=524288
+	mkdir -p "/data/crash"
+	chmod 775 "/data/crash"
+}
+
+stop()
+{
+
+        # We don't undo start_textdump() so that we can catch crashes at shutdown.
+        # XXX: undo 'sysctl debug.debugger_on_panic=1' ?
+        #sysctl debug.debugger_on_panic=0
+        #ddb unscript "kdb.enter.panic"
+}
