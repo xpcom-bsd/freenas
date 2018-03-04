@@ -1,0 +1,39 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+. /etc/rc.freenas
+
+name="ix-ctld"
+
+depend()
+{
+	provide ix-ctld
+	before ctld
+}
+
+start()
+{
+	/usr/local/libexec/nas/generate_ctl_conf.py
+	if [ "$(LD_LIBRARY_PATH=/usr/local/lib /usr/local/bin/midclt call notifier.alua_enabled)" = "True" ]; then
+		if [ "$(ha_mode)" = "MANUAL" ]; then
+			# TODO: get from database if we are not echostream
+		else
+			node=$(ha_node)
+		fi
+		if [ "${node}" = "A" ]; then
+			/sbin/sysctl kern.cam.ctl.ha_peer="listen 169.254.10.1" >/dev/null
+		elif [ "${node}" = "B" ]; then
+			/sbin/sysctl kern.cam.ctl.ha_peer="connect 169.254.10.1" >/dev/null
+		fi
+	else
+		/sbin/sysctl -q kern.cam.ctl.ha_peer="" >/dev/null
+	fi
+}
+
+stop()
+{
+	/sbin/sysctl -q kern.cam.ctl.ha_peer="" >/dev/null
+}
+

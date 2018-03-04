@@ -1,0 +1,26 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+. /etc/rc.freenas
+
+name="ix-nsswitch"
+
+depend()
+{
+	provide ix-nssswitch
+	before nsswitch
+	need rtsold
+}
+
+
+start()
+{
+	LD_LIBRARY_PATH=/usr/local/lib /usr/local/bin/midclt call etc.generate nss > /dev/null
+}
+
+stop()
+{
+	LD_LIBRARY_PATH=/usr/local/lib /usr/local/bin/midclt call etc.generate nss > /dev/null
+}

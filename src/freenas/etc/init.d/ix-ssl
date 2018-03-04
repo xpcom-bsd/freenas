@@ -1,0 +1,19 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+. /etc/rc.freenas
+name="ix-ssl"
+
+depend()
+{
+	provide ix-ssl
+	before ix-nginx
+}
+
+start()
+{
+	/usr/local/libexec/nas/generate_ssl_certificates.py
+}
+

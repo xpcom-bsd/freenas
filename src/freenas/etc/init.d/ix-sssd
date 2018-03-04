@@ -1,0 +1,20 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+name="ix-sssd"
+
+. /etc/rc.freenas
+
+depend()
+{
+	provide ix-sssd
+	need ix-ssl
+	before sssd
+}
+
+start()
+{
+	/usr/local/libexec/nas/generate_sssd_conf.py
+}
