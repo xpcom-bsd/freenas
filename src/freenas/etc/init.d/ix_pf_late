@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+name="ix_pf_late"
+
+depend()
+{
+	provide ix_pf_late
+	need ix-smbpasswd ix-nfsd
+	keyword -jail -shutdown
+}
+
+start()
+{
+	/sbin/ipfw -f flush
+}
+
+stop()
+{
+	/bin/sh /etc/ipfw.conf.block
+}
