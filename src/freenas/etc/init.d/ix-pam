@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+. /etc/rc.freenas
+
+name="ix-pam"
+
+depend()
+{
+	provide ix-pam
+}
+
+start()
+{
+	LD_LIBRARY_PATH=/usr/local/lib /usr/local/bin/midclt call etc.generate pam > /dev/null
+}
+
+stop()
+{
+	LD_LIBRARY_PATH=/usr/local/lib /usr/local/bin/midclt call etc.generate pam > /dev/null
+}

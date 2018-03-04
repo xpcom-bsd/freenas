@@ -1,0 +1,42 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+. /etc/rc.freenas
+
+name="ix-sysrrd_disable"
+SYSRRD_SENTINEL="/data/sentinels/sysdataset-rrd-disable"
+
+depend()
+{
+	provide ix-sysrrd_disable
+	need ix-system
+	before ix-collectd
+}
+
+start()
+{
+	local node field uuid rrdpath
+
+	# Skip if no sentinel file was found
+	if [ ! -f "${SYSRRD_SENTINEL}" ]; then
+		return 0
+	fi
+
+	node=$(ha_node)
+	if [ "x${node}" = "xB" ]; then
+		field="sys_uuid_b"
+	else
+		field="sys_uuid"
+	fi
+	uuid=$(eval echo $(/usr/local/bin/midclt call datastore.config system.systemdataset | /usr/local/bin/jq .${field}))
+	rrdpath="/var/db/system/rrd-${uuid}"
+
+	# Create tar from system dataset rrd which ix-collectd understands
+	if [ -d "${rrdpath}" ]; then
+		tar cjf /data/rrd_dir.tar.bz2 -s ',^\.,collectd/rrd,' -C ${rrdpath} .
+	fi
+	rm -f ${SYSRRD_SENTINEL}
+}
+

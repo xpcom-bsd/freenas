@@ -1,0 +1,22 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+. /etc/rc.freenas
+
+name="ix-resolv"
+
+depend()
+{
+	provide ix-resolv
+	before resolv
+	need nsswitch
+	keyword -jail
+}
+
+start()
+{
+	LD_LIBRARY_PATH=/usr/local/lib /usr/local/bin/midclt -q call dns.sync > /dev/null
+}
+

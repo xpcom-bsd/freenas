@@ -1,0 +1,29 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+name="ix-savehostid"
+
+depend()
+{
+	provide ix-savehostid
+}
+
+#
+# Save the hostid file to our persistent store.
+#
+start()
+{
+	# This is a hack to save the hostid.  We should save it in the
+	# database, but we don't have an easy way to upgrade people from
+	# beta yet, so that will have to wait until after we get that.  For
+	# now, just save it so we're the same boot to boot.  We also
+	# save it to our "readonly" conf copy rather than the /cfg copy
+	# so we don't create another dependency on /cfg which we're trying
+	# to eliminate to support 1 spindle systems.
+	if ! cmp -s /etc/hostid /conf/base/etc/hostid; then
+		cp /etc/hostid /conf/base/etc/hostid
+	fi
+}
+

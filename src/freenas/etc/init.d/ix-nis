@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+. /etc/rc.freenas
+
+name="ix-nis"
+
+depend()
+{
+	provide ix-nix
+}
+
+start()
+{
+        LD_LIBRARY_PATH=/usr/local/lib /usr/local/www/freenasUI/tools/cachetool.py fill
+}
+
+stop()
+{
+        LD_LIBRARY_PATH=/usr/local/lib /usr/local/www/freenasUI/tools/cachetool.py expire
+}

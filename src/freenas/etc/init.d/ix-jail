@@ -1,0 +1,111 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+. /etc/rc.freenas
+
+name="ix-jail"
+
+depend()
+{
+	provide ix-jail
+	need ix-warden
+	before jail
+	keyword -shutdown -jail
+}
+
+start()
+{
+
+	local saved_ifs="${IFS}"
+	local module
+	local jails="$*"
+	local res=0
+	RO_FREENAS_CONFIG=$(ro_sqlite ${name} 2> /tmp/${name}.fail && rm /tmp/${name}.fail)
+	trap 'rm -f ${RO_FREENAS_CONFIG}' EXIT
+
+	local IFS="|"
+	${FREENAS_SQLITE_CMD} ${RO_FREENAS_CONFIG} "
+	SELECT
+		module
+	FROM
+		plugins_kmod
+
+	ORDER BY
+		plugin_id,'order'
+	" | \
+	while read -r module
+	do
+		/sbin/kldload ${module} > /dev/null 2>&1
+	done
+
+	IFS="${saved_ifs}"
+	if [ -z "${jails}" ]
+	then
+		jails=$(jail_get|awk '{ print $1 }')
+		for jail in ${jails}
+		do
+			local auto=$(jail_get_autostart "${jail}")
+			local status=$(jail_get_status "${jail}")
+
+			if [ "${auto}" = "Enabled" -a "${status}" = "Stopped" ]
+			then
+				jail_start ${jail}
+				if [ "$?" != "0" ]
+				then
+					ewarn "Could not start ${jail}"
+					res=1
+				fi
+			fi
+		done
+	else
+		for jail in ${jails}
+		do
+			jail_start ${jail}
+			if [ "$?" != "0" ]
+			then
+				ewarn "Could not start ${jail}"
+				res=1
+			fi
+		done
+	fi
+
+	return ${res}
+}
+
+stop()
+{
+	local jails="$*"
+	local res=0
+
+	if [ -z "${jails}" ]
+	then
+		jails=$(jail_get|awk '{ print $1 }')
+		for jail in ${jails}
+		do
+			local status=$(jail_get_status "${jail}")
+			if [ "${status}" = "Running" ]
+			then
+				jail_stop ${jail}
+				if [ "$?" != "0" ]
+				then
+					ewarn "Could not stop ${jail}"
+					res=1
+				fi
+			fi
+		done
+	else
+		for jail in ${jails}
+		do
+			jail_stop ${jail}
+			if [ "$?" != "0" ]
+			then
+				ewarn "Could not stop ${jail}"
+				res=1
+			fi
+		done
+	fi
+
+	return ${res}
+}

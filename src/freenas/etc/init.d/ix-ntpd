@@ -1,0 +1,57 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+. /etc/rc.freenas
+
+name="ix-ntpd"
+
+depend()
+{
+	provide ix-ntpd
+	before ntpd
+}
+
+start()
+{
+	local IFS="|"
+	local f="ntp_address ntp_burst ntp_iburst ntp_prefer ntp_minpoll ntp_maxpoll"
+	eval local $f
+	local sf=$(var_to_sf $f)
+
+	RO_FREENAS_CONFIG=$(ro_sqlite ${name} 2> /tmp/${name}.fail && rm /tmp/${name}.fail)
+	trap 'rm -f ${RO_FREENAS_CONFIG}' EXIT
+
+	${FREENAS_SQLITE_CMD} ${RO_FREENAS_CONFIG} "SELECT $sf FROM system_ntpserver ORDER BY id" | \
+	while eval read -r $f; do
+		echo -n "server ${ntp_address}"
+		if [ "${ntp_burst}" = "1" ]; then
+			echo -n " burst"
+		fi
+		if [ "${ntp_iburst}" = "1" ]; then
+			echo -n " iburst"
+		fi
+		if [ "${ntp_prefer}" = "1" ]; then
+			echo -n " prefer"
+		fi
+		if [ -n "${ntp_maxpoll}" ]; then
+			echo -n " maxpoll ${ntp_maxpoll}"
+		fi
+		if [ -n "${ntp_maxpoll}" ]; then
+			echo -n " minpoll ${ntp_minpoll}"
+		fi
+		echo
+	done > /etc/ntp.conf
+
+	if [ -s /etc/ntp.conf ]; then
+		cat >> /etc/ntp.conf <<EOF
+restrict default limited kod nomodify notrap nopeer noquery
+restrict -6 default limited kod nomodify notrap nopeer noquery
+restrict 127.0.0.1
+restrict -6 ::1
+restrict 127.127.1.0
+EOF
+	fi
+}
+

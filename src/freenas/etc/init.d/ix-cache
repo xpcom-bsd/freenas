@@ -1,0 +1,28 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+. /etc/rc.freenas
+
+name="ix-cache"
+
+depend()
+{
+	provide ix-cache
+}
+
+start()
+{
+	if dirsrv_enabled activedirectory ||
+		dirsrv_enabled nis ||
+		dirsrv_enabled ldap
+	then
+		/usr/local/www/freenasUI/tools/cachetool.py fill
+	fi
+}
+
+stop()
+{
+        /usr/local/www/freenasUI/tools/cachetool.py expire
+}
