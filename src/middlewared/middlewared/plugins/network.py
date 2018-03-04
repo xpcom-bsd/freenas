@@ -438,7 +438,7 @@ class InterfacesService(Service):
         if data['int_ipv6auto']:
             iface.nd6_flags = iface.nd6_flags | {netif.NeighborDiscoveryFlags.ACCEPT_RTADV}
             await (await Popen(
-                ['/etc/rc.d/rtsold', 'onestart'],
+                ['/etc/init.d/rtsold', 'start'],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 close_fds=True,

@@ -59,7 +59,7 @@ syslog_debug_on()
 		echo -e '*.=debug\t/var/log/debug.log' > /etc/syslog.conf
 		cat /etc/syslog.conf.bak >> /etc/syslog.conf
 
-		/etc/rc.d/syslogd onereload >/dev/null 2>&1
+		/etc/init.d/syslogd reload >/dev/null 2>&1
 	fi
 }
 
@@ -68,7 +68,7 @@ syslog_debug_off()
 	if [ -f /etc/syslog.conf.bak ]
 	then
 		mv /etc/syslog.conf.bak /etc/syslog.conf
-		/etc/rc.d/syslogd onereload >/dev/null 2>&1
+		/etc/init.d/syslogd reload >/dev/null 2>&1
 	fi
 }
 

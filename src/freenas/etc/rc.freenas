@@ -60,7 +60,7 @@
 #
 : ${HTTPD:="/usr/local/sbin/nginx"}
 : ${HTTPDDIR:="/usr/local/etc/nginx"}
-: ${HTTPDSCRIPT:="/usr/local/etc/rc.d/nginx"}
+: ${HTTPDSCRIPT:="/usr/local/etc/init.d/nginx"}
 : ${HTTPDCONF:="${HTTPDDIR}/nginx.conf"}
 : ${HTTPDSSLPORT:="443"}
 : ${HTTPDPORT:="80"}
@@ -203,7 +203,7 @@ done
 # NOTE: This function is intentionally noisy to catch potential logic errors
 # with the boot process.
 #
-# TODO: add permanent store capability; using the mdconfig* rc.d scripts would
+# TODO: add permanent store capability; using the mdconfig* init.d scripts would
 # be a good idea as it features pre-populating / fsck functionality for memory
 # disk images, whereas mdmfs doesn't.
 # TODO: employ something similar for ix-collectd, but only after the permanent
