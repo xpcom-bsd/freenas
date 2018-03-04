@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+name="ix-alertd"
+
+depend()
+{
+	provide ix-alertd
+	before django
+}
+
+start()
+{
+	/usr/local/bin/python /usr/local/www/freenasUI/tools/alert.py
+}
+
+stop()
+{
+	return 0
+}
+
