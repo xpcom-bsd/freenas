@@ -1,0 +1,25 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+name="ix_register"
+extra_commands="reload"
+pid="/var/run/register.pid"
+
+depend()
+{
+	provide ix_register
+	need mdnsd
+	keyword -jail
+}
+
+start()
+{
+	LD_LIBRARY_PATH=/usr/local/lib /usr/local/bin/midclt call mdnsadvertise.start > /dev/null
+}
+
+reload()
+{
+	LD_LIBRARY_PATH=/usr/local/lib /usr/local/bin/midclt call mdnsadvertise.restart > /dev/null
+}

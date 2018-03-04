@@ -1,0 +1,18 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+name="ix_pf_early"
+
+depend()
+{
+	before mountd
+	provide ix_pf_early
+	keyword -jail
+}
+
+start()
+{
+	/bin/sh /etc/ipfw.conf.block
+}
