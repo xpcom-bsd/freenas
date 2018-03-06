@@ -11,7 +11,6 @@ import pickle as pickle
 import sqlparse
 
 Database = sqlite3base.Database
-IntegrityError = sqlite3base.IntegrityError
 
 execute_sync = False
 log = logging.getLogger('freeadmin.sqlite3_ha')
