@@ -11,7 +11,6 @@ import pickle as pickle
 import sqlparse
 
 Database = sqlite3base.Database
-DatabaseError = sqlite3base.DatabaseError
 IntegrityError = sqlite3base.IntegrityError
 
 execute_sync = False
