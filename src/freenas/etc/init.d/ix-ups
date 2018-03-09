@@ -68,8 +68,13 @@ generate_upsmon()
 			powerdown="/etc/nokillpower"
 		fi
 
-		cat <<EOF
+		if [ "$ups_shutdown" = "batt" ]; then
+			cat <<EOF
 FINALDELAY ${ups_shutdowntimer}
+EOF
+		fi
+
+		cat << EOF
 MONITOR ${ident} 1 ${user} ${passwd} ${ups_mode}
 NOTIFYCMD "/usr/local/sbin/upssched"
 NOTIFYFLAG ONBATT SYSLOG+WALL+EXEC
@@ -84,6 +89,7 @@ NOTIFYFLAG SHUTDOWN SYSLOG+EXEC
 SHUTDOWNCMD "${ups_shutdowncmd}"
 POWERDOWNFLAG ${powerdown}
 EOF
+
 
 		if [ -n "${ups_nocommwarntime}" ]; then
 			echo "NOCOMMWARNTIME ${ups_nocommwarntime}"
