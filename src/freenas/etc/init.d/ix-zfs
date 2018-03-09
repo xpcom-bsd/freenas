@@ -8,7 +8,7 @@ name="ix-zfs"
 depend()
 {
 	provide ix-zfs
-	need hostid mountcritlocal
+	need hostid localmount
 	before zfs
 }
 
