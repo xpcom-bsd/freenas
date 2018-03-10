@@ -10,7 +10,7 @@ name="ix-passwd"
 depend()
 {
 	provide ix-passwd
-	need mountcritlocal
+	need localmount
 	before ix-zfs
 }
 
