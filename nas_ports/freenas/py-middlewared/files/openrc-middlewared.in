@@ -10,7 +10,6 @@ depend()
 	keyword -shutdown
 }
 
-: ${middlewared_debug="NO"}
 : ${middlewared_plugins_dirs=""}
 
 # Set location of aditional plugin dirs
@@ -28,35 +27,17 @@ export LD_LIBRARY_PATH="/usr/local/lib"
 export PATH="$PATH:/usr/local/sbin:/usr/local/bin"
 export LC_ALL="en_US.UTF-8"
 
-start() {
+start_pre() {
 	mount -uw /  # FIXME: why root is not rw by default?
 	if ! mount | grep -q 'on /dev/fd (' 2> /dev/null; then
 		mount -t fdescfs fdescfs /dev/fd
 	fi
 	/sbin/ifconfig lo0 127.0.0.1 up
-	if checkyesno middlewared_debug; then
-		/usr/local/bin/tmux new-session -s middlewared -d
-		/usr/local/bin/tmux send -t middlewared "env PATH=$PATH:/usr/local/sbin:/usr/local/bin LC_ALL=en_US.UTF-8 /usr/local/bin/middlewared ${plugins_dirs_arg} -P ${pidfile}" ENTER
 	else
 		supervise-daemon -p ${pidfile} --start ${command} ${command_args}
 	fi
+}
+
+start_post() {
 	LD_LIBRARY_PATH=/usr/local/lib /usr/local/bin/midclt -t 120 waitready
 }
-
-stop() {
-	if checkyesno middlewared_debug; then
-                rc_pid=$(cat $pidfile)
-                kill -s TERM ${rc_pid}
-		/usr/local/bin/tmux kill-session -t 'middlewared'
-	elif [ -f "${pidfile}" ] ; then
-		supervise-daemon --stop ${command} --pidfile ${pidfile}
-	else
-		echo 'middlewared is not running'
-		exit 1
-	fi
-
-	if [ -f "${pidfile}" ] ; then
-		rm $pidfile
-	fi
-}
-
