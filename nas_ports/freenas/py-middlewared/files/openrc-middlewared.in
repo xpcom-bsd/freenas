@@ -33,9 +33,6 @@ start_pre() {
 		mount -t fdescfs fdescfs /dev/fd
 	fi
 	/sbin/ifconfig lo0 127.0.0.1 up
-	else
-		supervise-daemon -p ${pidfile} --start ${command} ${command_args}
-	fi
 }
 
 start_post() {
