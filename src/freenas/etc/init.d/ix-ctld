@@ -30,6 +30,7 @@ start()
 	else
 		/sbin/sysctl -q kern.cam.ctl.ha_peer="" >/dev/null
 	fi
+	return 0
 }
 
 stop()
