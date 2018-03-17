@@ -10,7 +10,7 @@ name="ix-post-samba"
 depend()
 {
 	provide ix-post-samba
-	samba_server
+	need samba_server
 }
 
 save_sambaSID()
