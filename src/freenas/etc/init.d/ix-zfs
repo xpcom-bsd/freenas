@@ -19,7 +19,8 @@ start()
 {
 	RO_FREENAS_CONFIG=$(ro_sqlite ${name} 2> /tmp/${name}.fail && rm /tmp/${name}.fail)
 	trap 'rm -f ${RO_FREENAS_CONFIG}' EXIT
-	kldload dtraceall
+	# dtraceall is usually already loaded, but just in case
+	kldload dtraceall 2>/dev/null
 	dtrace -qn 'zfs-dbgmsg{printf("\r                                                                     \r%s", stringof(arg0))}' &
 	echo "Beginning ZFS volume imports"
 	echo
