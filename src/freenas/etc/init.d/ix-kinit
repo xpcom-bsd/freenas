@@ -305,7 +305,7 @@ kerberos_status_ldap()
 
 start()
 {
-	local res=1
+	local res=0
 
 	if dirsrv_enabled activedirectory
 	then
