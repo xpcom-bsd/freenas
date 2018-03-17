@@ -15,7 +15,7 @@ depend()
 
 start()
 {
-	grep -q "grub" /conf/base/etc/fstab
+	grep -q "grub" /conf/base/etc/fstab 2>/dev/null
 	if [ $? -ne 0 ] ; then
 		# Nothing to do
 		return 0
