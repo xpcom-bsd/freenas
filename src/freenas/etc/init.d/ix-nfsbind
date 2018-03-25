@@ -19,6 +19,5 @@ start() {
 	# Since nfs flags goes in rc.conf.local we need to regenerate it.
 	rm ${FREENAS_CONFIG_MD5}
 	/etc/rc.conf.local
-	killall -ALRM sh
 }
 

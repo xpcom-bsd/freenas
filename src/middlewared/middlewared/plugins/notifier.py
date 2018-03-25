@@ -22,6 +22,7 @@ from freenasUI.common.freenasldap import (
     FreeNAS_LDAP,
     FLAGS_DBINIT,
 )
+from freenasUI.common.freenasusers import FreeNAS_User
 from freenasUI.common.samba import Samba4
 from freenasUI.common.warden import Warden
 from freenasUI.middleware import zfs
@@ -41,8 +42,6 @@ from freenasUI.directoryservice.models import (
     IDMAP_TYPE_SCRIPT,
 )
 from freenasUI.directoryservice.utils import get_idmap_object
-
-from freenasUI.system.alert import alertPlugins
 
 from middlewared.utils import django_modelobj_serialize
 
@@ -164,6 +163,14 @@ class NotifierService(Service):
                 data[i] = getattr(ds, i)
         return data
 
+    async def get_user_object(self, username):
+        user = False
+        try:
+            user = FreeNAS_User(username)
+        except Exception:
+            pass
+        return user
+
     def ldap_status(self):
         ret = False
         try:
@@ -253,14 +260,3 @@ class NotifierService(Service):
     def gui_languages(self):
         """Temporary wrapper to return available languages in django"""
         return settings.LANGUAGES
-
-    def get_alerts(self):
-        """
-        Temporary workaround to get alerts from legacy UI code
-        """
-        rv = []
-        for alert in alertPlugins.get_alerts():
-            if alert.getDismiss():
-                continue
-            rv.append(f'{alert.getLevel()} - {alert.getMessage()}')
-        return '\n'.join(rv)

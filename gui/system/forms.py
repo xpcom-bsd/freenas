@@ -25,27 +25,25 @@
 #
 #####################################################################
 
-from collections import defaultdict, OrderedDict
-from datetime import datetime
 import errno
-import pickle as pickle
 import json
 import logging
 import math
 import os
+import pickle as pickle
 import random
 import re
 import stat
 import subprocess
 import threading
 import time
+from collections import OrderedDict, defaultdict
+from datetime import datetime
 
-from OpenSSL import crypto, SSL
+from OpenSSL import SSL, crypto
 
-from ldap import LDAPError
-
+from common.ssl import CERT_CHAIN_REGEX
 from django.conf import settings
-from formtools.wizard.views import SessionWizardView
 from django.core.cache import cache
 from django.core.files.storage import FileSystemStorage
 from django.db.models import Q
@@ -53,69 +51,46 @@ from django.forms import FileField
 from django.forms.formsets import BaseFormSet, formset_factory
 from django.http import HttpResponse
 from django.shortcuts import render_to_response
-from django.utils.html import escapejs
 from django.utils import timezone
+from django.utils.html import escapejs
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _, ugettext as __
-
 from dojango import forms
+from formtools.wizard.views import SessionWizardView
 from freenasOS import Configuration, Update
 from freenasUI import choices
 from freenasUI.account.models import bsdGroups, bsdUsers
-from freenasUI.common import humanize_size, humanize_number_si
+from freenasUI.common import humanize_number_si, humanize_size
+from freenasUI.common.forms import Form, ModelForm
+from freenasUI.common.freenasldap import FreeNAS_ActiveDirectory, FreeNAS_LDAP
+from freenasUI.common.ssl import (create_certificate,
+                                  create_certificate_signing_request,
+                                  create_self_signed_CA, export_privatekey,
+                                  generate_key, load_certificate,
+                                  load_privatekey, sign_certificate)
 from freenasUI.common.system import test_ntp_server
-from freenasUI.common.forms import ModelForm, Form
-from freenasUI.common.freenasldap import (
-    FreeNAS_ActiveDirectory,
-    FreeNAS_LDAP
-)
-from freenasUI.common.ssl import (
-    create_self_signed_CA,
-    create_certificate_signing_request,
-    create_certificate,
-    sign_certificate,
-    load_certificate,
-    load_privatekey,
-    export_privatekey,
-    generate_key
-)
-
-from freenasUI.directoryservice.forms import (
-    ActiveDirectoryForm,
-    LDAPForm,
-    NISForm
-)
-from freenasUI.directoryservice.models import (
-    ActiveDirectory,
-    LDAP,
-    NIS
-)
-from freenasUI.freeadmin.views import JsonResp
+from freenasUI.directoryservice.forms import (ActiveDirectoryForm, LDAPForm,
+                                              NISForm)
+from freenasUI.directoryservice.models import LDAP, NIS, ActiveDirectory
 from freenasUI.freeadmin.utils import key_order
-from freenasUI.middleware.client import client, ClientException, ValidationErrors
+from freenasUI.freeadmin.views import JsonResp
+from freenasUI.middleware.client import (ClientException, ValidationErrors,
+                                         client)
 from freenasUI.middleware.exceptions import MiddlewareError
 from freenasUI.middleware.form import MiddlewareModelForm
 from freenasUI.middleware.notifier import notifier
-from freenasUI.services.models import (
-    services,
-    iSCSITarget,
-    iSCSITargetGroups,
-    iSCSITargetAuthorizedInitiator,
-    iSCSITargetExtent,
-    iSCSITargetPortal,
-    iSCSITargetPortalIP,
-    iSCSITargetToExtent,
-)
-from freenasUI.sharing.models import (
-    AFP_Share,
-    CIFS_Share,
-    NFS_Share,
-    NFS_Share_Path,
-)
+from freenasUI.services.models import (iSCSITarget,
+                                       iSCSITargetAuthorizedInitiator,
+                                       iSCSITargetExtent, iSCSITargetGroups,
+                                       iSCSITargetPortal, iSCSITargetPortalIP,
+                                       iSCSITargetToExtent, services)
+from freenasUI.sharing.models import (AFP_Share, CIFS_Share, NFS_Share,
+                                      NFS_Share_Path)
 from freenasUI.storage.forms import VolumeAutoImportForm, VolumeMixin
-from freenasUI.storage.models import Disk, Volume, Scrub
+from freenasUI.storage.models import Disk, Scrub, Volume
 from freenasUI.system import models
 from freenasUI.tasks.models import SMARTTest
-from common.ssl import CERT_CHAIN_REGEX
+from ldap import LDAPError
 
 log = logging.getLogger('system.forms')
 WIZARD_PROGRESSFILE = '/tmp/.initialwizard_progress'
@@ -1472,58 +1447,102 @@ LOADER_VARNAME_FORMAT_RE = \
     re.compile('[a-z][a-z0-9_]+\.*([a-z0-9_]+\.)*[a-z0-9_]+', re.I)
 
 
-class TunableForm(ModelForm):
+class TunableForm(MiddlewareModelForm, ModelForm):
 
     class Meta:
         fields = '__all__'
         model = models.Tunable
 
-    def clean_tun_comment(self):
-        return self.cleaned_data.get('tun_comment').strip()
+    middleware_attr_prefix = "tun_"
+    middleware_attr_schema = "tunable"
+    middleware_plugin = "tunable"
+    is_singletone = False
 
-    def clean_tun_value(self):
-        value = self.cleaned_data.get('tun_value')
-        if '"' in value or "'" in value:
-            raise forms.ValidationError(_('Quotes are not allowed'))
-        return value
-
-    def clean_tun_var(self):
-        value = self.cleaned_data.get('tun_var').strip()
-        qs = models.Tunable.objects.filter(tun_var=value)
-        if self.instance.id:
-            qs = qs.exclude(id=self.instance.id)
-        if qs.exists():
-            raise forms.ValidationError(_(
-                'This variable already exists'
-            ))
-        return value
-
-    def clean(self):
-        cdata = self.cleaned_data
-        value = cdata.get('tun_var')
-        if value:
-            if (
-                cdata.get('tun_type') in ('loader', 'rc') and
-                not LOADER_VARNAME_FORMAT_RE.match(value)
-            ) or (
-                cdata.get('tun_type') == 'sysctl' and
-                not SYSCTL_VARNAME_FORMAT_RE.match(value)
-            ):
-                self.errors['tun_var'] = self.error_class(
-                    [_(SYSCTL_TUNABLE_VARNAME_FORMAT)]
-                )
-                cdata.pop('tun_var', None)
-        return cdata
-
-    def save(self):
-        super(TunableForm, self).save()
-        if self.cleaned_data.get('tun_type') == 'loader':
-            notifier().reload("loader")
-        else:
-            notifier().reload("sysctl")
+    def middleware_clean(self, data):
+        data['type'] = data['type'].upper()
+        return data
 
 
-class ConsulAlertsForm(ModelForm):
+class AlertServiceSettingsWidget(forms.Widget):
+    def __init__(self, allow_inherit):
+        self.allow_inherit = allow_inherit
+
+        super().__init__()
+
+    def render(self, name, value, attrs=None, renderer=None):
+        value = value or {}
+
+        html = []
+        html.append('<table>')
+
+        with client as c:
+            policies = c.call('alert.list_policies')
+            sources = c.call('alert.list_sources')
+
+        for source in sources:
+            html.append('<tr>')
+
+            html.append(f'<td>{source["title"]}</td>')
+
+            html.append('<td>')
+            html.append(f'<select dojoType="dijit.form.Select" id="id_{name}_{source["name"]}" '
+                        f'name="{name}[{source["name"]}]">')
+            options = [(policy, policy.title()) for policy in policies]
+            if self.allow_inherit:
+                options = [("", "Inherit")] + options
+            for k, v in options:
+                selected = ""
+                if value.get(source["name"], "") == k:
+                    selected = "selected=\"selected\""
+                html.append(f'<option value="{k}" {selected}>{v}</option>')
+            html.append('</select>')
+            html.append('</td>')
+
+            html.append('</tr>')
+
+        html.append('</table>')
+
+        html.append(f'<input type="hidden" name="{name}" value="{{}}" data-dojo-type="dijit.form.TextBox" />')
+
+        return mark_safe("".join(html))
+
+    def value_from_datadict(self, data, files, name):
+        """
+        Given a dictionary of data and this widget's name, return the value
+        of this widget or None if it's not provided.
+        """
+        r = fr"{name}\[(.+)\]"
+        return json.dumps({re.match(r, k).group(1): v for k, v in data.items() if re.match(r, k) and v})
+
+
+class AlertDefaultSettingsForm(MiddlewareModelForm, ModelForm):
+
+    middleware_attr_prefix = ""
+    middleware_attr_schema = "alert_default_settings"
+    middleware_plugin = "alertdefaultsettings"
+    is_singletone = True
+
+    settings = forms.CharField(
+        widget=AlertServiceSettingsWidget(allow_inherit=False),
+    )
+
+    class Meta:
+        fields = '__all__'
+        model = models.AlertDefaultSettings
+
+
+class AlertServiceForm(MiddlewareModelForm, ModelForm):
+
+    middleware_attr_prefix = ""
+    middleware_attr_schema = "alert_service"
+    middleware_plugin = "alertservice"
+    is_singletone = False
+
+    middleware_exclude_fields = ["send_test_alert"]
+
+    type = forms.ChoiceField(
+        choices=(),
+    )
 
     # Common fields between all API
     username = forms.CharField(
@@ -1682,112 +1701,78 @@ class ConsulAlertsForm(ModelForm):
         required=False,
     )
 
+    # Mail
+    email = forms.EmailField(
+        label=_('E-mail address'),
+        help_text=_('Leave empty for system global e-mail address.'),
+        required=False,
+    )
+
+    settings = forms.CharField(
+        widget=AlertServiceSettingsWidget(allow_inherit=True),
+    )
+
+    send_test_alert = forms.CharField(
+        required=False,
+        widget=forms.widgets.HiddenInput(),
+    )
+
+    types_fields = {
+        'AWSSNS': ['region', 'topic_arn', 'aws_access_key_id', 'aws_secret_access_key'],
+        'HipChat': ['hfrom', 'cluster_name', 'base_url', 'room_id', 'auth_token'],
+        'InfluxDB': ['host', 'username', 'password', 'database', 'series_name'],
+        'Mattermost': ['cluster_name', 'url', 'username', 'password', 'team', 'channel'],
+        'Mail': ['email'],
+        'OpsGenie': ['cluster_name', 'api_key'],
+        'PagerDuty': ['service_key', 'client_name'],
+        'Slack': ['cluster_name', 'url', 'channel', 'username', 'icon_url', 'detailed'],
+        'SNMPTrap': [],
+        'VictorOps': ['api_key', 'routing_key'],
+    }
+
     class Meta:
         fields = '__all__'
-        model = models.ConsulAlerts
+        model = models.AlertService
 
     def __init__(self, *args, **kwargs):
-        super(ConsulAlertsForm, self).__init__(*args, **kwargs)
-        self.fields['consulalert_type'].widget.attrs['onChange'] = (
-            "consulTypeToggle();"
+        super(AlertServiceForm, self).__init__(*args, **kwargs)
+        with client as c:
+            self.fields['type'].choices = [(t["name"], t["title"]) for t in c.call('alertservice.list_types')]
+        self.fields['type'].widget.attrs['onChange'] = (
+            "alertServiceTypeToggle();"
         )
-        key_order(self, len(self.fields) - 1, 'enabled', instance=True)
+        key_order(self, len(self.fields) - 2, 'enabled', instance=True)
+        key_order(self, len(self.fields) - 1, 'settings', instance=True)
 
         if self.instance.id:
-            if self.instance.consulalert_type == 'InfluxDB':
-                self.fields['host'].initial = self.instance.attributes.get('host')
-                self.fields['username'].initial = self.instance.attributes.get('username')
-                self.fields['password'].initial = self.instance.attributes.get('password')
-                self.fields['database'].initial = self.instance.attributes.get('database')
-                self.fields['series_name'].initial = self.instance.attributes.get('series_name')
-                self.fields['enabled'].initial = self.instance.attributes.get('enabled')
-            elif self.instance.consulalert_type == 'Slack':
-                self.fields['cluster_name'].initial = self.instance.attributes.get('cluster_name')
-                self.fields['url'].initial = self.instance.attributes.get('url')
-                self.fields['channel'].initial = self.instance.attributes.get('channel')
-                self.fields['username'].initial = self.instance.attributes.get('username')
-                self.fields['icon_url'].initial = self.instance.attributes.get('icon_url')
-                self.fields['detailed'].initial = self.instance.attributes.get('detailed')
-                self.fields['enabled'].initial = self.instance.attributes.get('enabled')
-            elif self.instance.consulalert_type == 'Mattermost':
-                self.fields['cluster_name'].initial = self.instance.attributes.get('cluster_name')
-                self.fields['url'].initial = self.instance.attributes.get('url')
-                self.fields['username'].initial = self.instance.attributes.get('username')
-                self.fields['password'].initial = self.instance.attributes.get('password')
-                self.fields['team'].initial = self.instance.attributes.get('team')
-                self.fields['channel'].initial = self.instance.attributes.get('channel')
-                self.fields['enabled'].initial = self.instance.attributes.get('enabled')
-            elif self.instance.consulalert_type == 'PagerDuty':
-                self.fields['service_key'].initial = self.instance.attributes.get('service_key')
-                self.fields['client_name'].initial = self.instance.attributes.get('client_name')
-                self.fields['enabled'].initial = self.instance.attributes.get('enabled')
-            elif self.instance.consulalert_type == 'HipChat':
-                self.fields['hfrom'].initial = self.instance.attributes.get('hfrom')
-                self.fields['cluster_name'].initial = self.instance.attributes.get('cluster_name')
-                self.fields['base_url'].initial = self.instance.attributes.get('base_url')
-                self.fields['room_id'].initial = self.instance.attributes.get('room_id')
-                self.fields['auth_token'].initial = self.instance.attributes.get('auth_token')
-                self.fields['enabled'].initial = self.instance.attributes.get('enabled')
-            elif self.instance.consulalert_type == 'OpsGenie':
-                self.fields['cluster_name'].initial = self.instance.attributes.get('cluster_name')
-                self.fields['api_key'].initial = self.instance.attributes.get('api_key')
-                self.fields['enabled'].initial = self.instance.attributes.get('enabled')
-            elif self.instance.consulalert_type == 'AWSSNS':
-                self.fields['region'].initial = self.instance.attributes.get('region')
-                self.fields['topic_arn'].initial = self.instance.attributes.get('topic_arn')
-                self.fields['aws_access_key_id'].initial = self.instance.attributes.get('aws_access_key_id')
-                self.fields['aws_secret_access_key'].initial = self.instance.attributes.get('aws_secret_access_key')
-                self.fields['enabled'].initial = self.instance.attributes.get('enabled')
-            elif self.instance.consulalert_type == 'VictorOps':
-                self.fields['api_key'].initial = self.instance.attributes.get('api_key')
-                self.fields['routing_key'].initial = self.instance.attributes.get('routing_key')
-                self.fields['enabled'].initial = self.instance.attributes.get('enabled')
+            for k in self.types_fields.get(self.instance.type, []):
+                self.fields[k].initial = self.instance.attributes.get(k)
 
-    def save(self, *args, **kwargs):
-        kwargs['commit'] = False
-        objs = super(ConsulAlertsForm, self).save(*args, **kwargs)
+    def save(self):
+        if self.cleaned_data.get("send_test_alert") == "1":
+            data = self.middleware_prepare()
 
-        if objs:
-            objs.attributes = {
-                "username": self.cleaned_data.get('username'),
-                "password": self.cleaned_data.get('password'),
-                "host": self.cleaned_data.get('host'),
-                "url": self.cleaned_data.get('url'),
-                "database": self.cleaned_data.get('database'),
-                "series_name": self.cleaned_data.get('series_name'),
-                "cluster_name": self.cleaned_data.get('cluster_name'),
-                "channel": self.cleaned_data.get('channel'),
-                "icon_url": self.cleaned_data.get('icon_url'),
-                "detailed": self.cleaned_data.get('detailed'),
-                "team": self.cleaned_data.get('team'),
-                "service_key": self.cleaned_data.get('service_key'),
-                "client_name": self.cleaned_data.get('client_name'),
-                "hfrom": self.cleaned_data.get('hfrom'),
-                "base_url": self.cleaned_data.get('base_url'),
-                "room_id": self.cleaned_data.get('room_id'),
-                "auth_token": self.cleaned_data.get('auth_token'),
-                "api_key": self.cleaned_data.get('api_key'),
-                "enabled": self.cleaned_data.get('enabled'),
-                "region": self.cleaned_data.get('region'),
-                "topic_arn": self.cleaned_data.get('topic_arn'),
-                "aws_access_key_id": self.cleaned_data.get('aws_access_key_id'),
-                "aws_secret_access_key": self.cleaned_data.get('aws_secret_access_key'),
-                "routing_key": self.cleaned_data.get('routing_key')
-            }
-            objs.save()
+            self._middleware_action = "test"
 
-        cdata = self.cleaned_data
+            with client as c:
+                if c.call(f"{self.middleware_plugin}.test", data):
+                    msg = "Test alert sent successfully"
+                else:
+                    msg = "Test alert sending failed"
 
+                raise ValidationErrors([["__all__", msg, errno.EINVAL]])
+
+        return super().save()
+
+    def middleware_clean(self, data):
+        data["attributes"] = {k: data[k] for k in self.types_fields[data["type"]]}
+        for k in sum(self.types_fields.values(), []):
+            data.pop(k, None)
+        return data
+
+    def delete(self):
         with client as c:
-            c.call('consul.do_create', cdata)
-
-        return objs
-
-    def delete(self, *args, **kwargs):
-        with client as c:
-            c.call('consul.do_delete', self.instance.consulalert_type, self.instance.attributes)
-
-        self.instance.delete()
+            c.call("alert_service.delete", self.instance.id)
 
 
 class SystemDatasetForm(MiddlewareModelForm, ModelForm):
