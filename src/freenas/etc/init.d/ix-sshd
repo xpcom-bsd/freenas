@@ -59,10 +59,6 @@ __EOF__
                 echo "ClientAliveInterval 15" >> $cfg
             fi
 
-            if ! echo "$options"| grep -q "NoneEnabled"; then
-                echo "NoneEnabled yes" >> $cfg
-            fi
-
             if ! echo "$options"| grep -q "VersionAddendum"; then
                 echo "VersionAddendum none" >> $cfg
             fi
@@ -136,5 +132,6 @@ __EOF__
         fi
     done
     chmod 600 /usr/local/etc/ssh/ssh_host_key /usr/local/etc/ssh/ssh_host_dsa_key /usr/local/etc/ssh/ssh_host_ecdsa_key /usr/local/etc/ssh/ssh_host_rsa_key /usr/local/etc/ssh/ssh_host_ed25519_key 2>/dev/null
+    return 0
 }
 

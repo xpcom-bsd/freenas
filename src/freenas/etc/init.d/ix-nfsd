@@ -151,6 +151,6 @@ start()
 		fi
 	fi
 
-	service mountd quietreload
+	service mountd reload
 }
 
