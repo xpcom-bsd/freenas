@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+#
+# $FreeBSD$
+#
+
+# PROVIDE: snmp-agent
+# REQUIRE: snmpd
+
+
+depend()
+{
+  provide snmp-agent
+  need snmpd
+}
+
+name=snmp_agent
+
+: ${snmp_agent_enable:="NO"}
+
+pidfile=/var/run/snmp-agent.pid
+supervisor=supervise-daemon
+command="/usr/local/bin/snmp-agent.py"
+command_args=""

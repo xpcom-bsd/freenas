@@ -1,0 +1,29 @@
+#!/sbin/openrc-run
+
+# $FreeBSD$
+#
+# PROVIDE: smartd-daemon
+# REQUIRE: LOGIN
+# KEYWORD: shutdown nojail
+#
+# Define these smartd_daemon_* variables in one of these files:
+#	/etc/rc.conf
+#	/etc/rc.conf.local
+#	/etc/rc.conf.d/smartd_daemon
+#
+# DO NOT CHANGE THESE DEFAULT VALUES HERE
+
+depend()
+{
+  provide smartd-daemon
+  keyword -shutdown -jail
+}
+
+name=smartd_daemon
+
+required_files=${smartd_daemon_config:="/usr/local/etc/smartd.conf"}
+pidfile=${smartd_daemon_pidfile:="/var/run/smartd-daemon.pid"}
+
+supervisor=supervise-daemon
+command="/usr/local/sbin/smartd"
+command_args="-n ${smartd_daemon_flags} -c ${required_files}"
