@@ -17,4 +17,6 @@ depend()
 start()
 {
 	/usr/local/libexec/nas/generate_sssd_conf.py
+	# We ignore the return status
+	return 0
 }

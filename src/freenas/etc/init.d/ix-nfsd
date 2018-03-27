@@ -9,6 +9,7 @@ depend()
 {
 	provide ix-nfsd
 	need ix-activedirectory
+	after nfsd
 }
 
 hasspace()
