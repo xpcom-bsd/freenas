@@ -22,8 +22,7 @@ start()
 	# dtraceall is usually already loaded, but just in case
 	kldload dtraceall 2>/dev/null
 	dtrace -qn 'zfs-dbgmsg{printf("\r                                                                     \r%s", stringof(arg0))}' &
-	echo "Beginning ZFS volume imports"
-	echo
+	einfo "Beginning ZFS volume imports"
 	local IFS="|"
 	local f="vol_name vol_guid"
 	local sf=$(var_to_sf $f)
@@ -49,14 +48,12 @@ start()
 	${FREENAS_SQLITE_CMD} ${RO_FREENAS_CONFIG} "SELECT $sf FROM storage_volume WHERE vol_encrypt < 2" | \
 	while eval read -r $f; do
 		if [ -n "${vol_guid}" ]; then
-			echo "	Importing ${vol_guid}"
-			echo
+			einfo "	Importing ${vol_guid}"
 			[ -e /data/zfs/zpool.cache.saved ] && /sbin/zpool import -c /data/zfs/zpool.cache.saved -o cachefile=none -R /mnt -f ${vol_guid} || /sbin/zpool import -o cachefile=none -R /mnt -f ${vol_guid}
 			rc=$?
 		fi
 		if [ ${rc} -ne 0 ]; then
-			echo "	Importing ${vol_name}"
-			echo
+			einfo "	Importing ${vol_name}"
 			/sbin/zpool import -o cachefile=none -R /mnt -f ${vol_name}
 		fi
 		/sbin/zpool set cachefile=/data/zfs/zpool.cache ${vol_name}
@@ -79,7 +76,6 @@ start()
 		fi
 	done
 	pkill -9 dtrace
-	echo
-	echo "ZFS volume imports complete"
+	einfo "ZFS volume imports complete"
 }
 
