@@ -172,7 +172,10 @@ class Application(object):
             self.send_error(message, e.errno, str(e), sys.exc_info())
         except Exception as e:
             self.send_error(message, errno.EINVAL, str(e), sys.exc_info())
-            self.logger.warn('Exception while calling {}(*{})'.format(message['method'], message.get('params')), exc_info=True)
+            self.logger.warn('Exception while calling {}(*{})'.format(
+                message['method'],
+                self.middleware.dump_args(message.get('params', []), method_name=message['method'])
+            ), exc_info=True)
 
             if self.middleware.crash_reporting.is_disabled():
                 self.logger.debug('[Crash Reporting] is disabled using sentinel file.')
@@ -745,23 +748,24 @@ class Middleware(object):
                     else:
                         delay = method._periodic.interval
 
-                    self.logger.debug(f"Setting up periodic task {service_name}::{task_name} to run every {method._periodic.interval} seconds")
+                    method_name = f'{service_name}.{task_name}'
+                    self.logger.debug(f"Setting up periodic task {method_name} to run every {method._periodic.interval} seconds")
 
                     self.__loop.call_later(
                         delay,
                         functools.partial(
                             self.__call_periodic_task,
-                            method, service_name, service_obj, task_name, method._periodic.interval
+                            method, service_name, service_obj, method_name, method._periodic.interval
                         )
                     )
 
-    def __call_periodic_task(self, method, service_name, service_obj, task_name, interval):
-        self.__loop.create_task(self.__periodic_task_wrapper(method, service_name, service_obj, task_name, interval))
+    def __call_periodic_task(self, method, service_name, service_obj, method_name, interval):
+        self.__loop.create_task(self.__periodic_task_wrapper(method, service_name, service_obj, method_name, interval))
 
-    async def __periodic_task_wrapper(self, method, service_name, service_obj, task_name, interval):
-        self.logger.trace("Calling periodic task %s::%s", service_name, task_name)
+    async def __periodic_task_wrapper(self, method, service_name, service_obj, method_name, interval):
+        self.logger.trace("Calling periodic task %s", method_name)
         try:
-            await self._call(task_name, service_obj, method)
+            await self._call(method_name, service_obj, method)
         except Exception:
             self.logger.warning("Exception while calling periodic task", exc_info=True)
 
@@ -769,7 +773,7 @@ class Middleware(object):
             interval,
             functools.partial(
                 self.__call_periodic_task,
-                method, service_name, service_obj, task_name, interval
+                method, service_name, service_obj, method_name, interval
             )
         )
 
@@ -928,6 +932,16 @@ class Middleware(object):
         except (AttributeError, KeyError):
             raise CallError(f'Method "{method_name}" not found in "{service}"', CallError.ENOMETHOD)
         return serviceobj, methodobj
+
+    def dump_args(self, args, method=None, method_name=None):
+        if method is None:
+            if method_name is not None:
+                try:
+                    method = self._method_lookup(method_name)[1]
+                except Exception:
+                    return args
+
+        return [method.accepts[i].dump(arg) for i, arg in enumerate(args) if i < len(method.accepts)]
 
     async def call_method(self, app, message):
         """Call method from websocket"""

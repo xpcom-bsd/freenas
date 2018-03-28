@@ -4,6 +4,7 @@ from middlewared.client import Client
 import asyncio
 import concurrent.futures
 from concurrent.futures.process import _process_worker
+import functools
 import importlib
 import logging
 import multiprocessing
@@ -45,6 +46,18 @@ class FakeMiddleware(object):
     def __init__(self):
         self.client = None
         self.logger = logging.getLogger('worker')
+
+    async def run_in_thread(self, method, *args, **kwargs):
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        try:
+            return await asyncio.get_event_loop().run_in_executor(
+                executor, functools.partial(method, *args, **kwargs)
+            )
+        finally:
+            # We need this because default behavior of PoolExecutor with
+            # context manager is to shutdown(wait=True) which would block
+            # the worker until thread finishes.
+            executor.shutdown(wait=False)
 
     async def _call(self, service_mod, service_name, method, args, job=None):
         with Client() as c:
@@ -99,7 +112,10 @@ def main_worker(*call_args):
     global MIDDLEWARE
     loop = asyncio.get_event_loop()
     coro = MIDDLEWARE._call(*call_args)
-    res = loop.run_until_complete(coro)
+    try:
+        res = loop.run_until_complete(coro)
+    except SystemExit:
+        raise RuntimeError('Worker call raised SystemExit exception')
     return res
 
 

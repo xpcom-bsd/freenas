@@ -119,7 +119,7 @@ class ZFSPoolService(Service):
                 for i in (existing or []):
                     target = find_vdev(pool, i['target'])
                     if target is None:
-                        raise CallError(f'Failed to find vdev for {target}', errno.EINVAL)
+                        raise CallError(f"Failed to find vdev for {i['target']}", errno.EINVAL)
                     i['target'] = target
 
                 for i in (existing or []):
@@ -197,6 +197,11 @@ class ZFSPoolService(Service):
         t = threading.Thread(target=watch, daemon=True)
         t.start()
         t.join()
+
+    @accepts()
+    def find_import(self):
+        with libzfs.ZFS() as zfs:
+            return [i.__getstate__() for i in zfs.find_import()]
 
 
 class ZFSDatasetService(CRUDService):
