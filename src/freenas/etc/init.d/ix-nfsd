@@ -152,6 +152,6 @@ start()
 		fi
 	fi
 
-	service mountd reload
+	service mountd restart
 }
 
