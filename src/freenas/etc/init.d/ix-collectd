@@ -10,6 +10,7 @@ name="ix-collectd"
 depend()
 {
 	provide ix-collectd
+	after middlewared ntpd dbus
 	before collectd
 }
 
@@ -75,6 +76,8 @@ start()
     local rrdmnt
     local hostname
     local graphite
+
+    ebegin "Starting $name"
 
     RO_FREENAS_CONFIG=$(ro_sqlite ${name} 2> /tmp/${name}.fail && rm /tmp/${name}.fail)
     trap 'rm -f ${RO_FREENAS_CONFIG}' EXIT
@@ -318,5 +321,5 @@ LoadPlugin write_graphite
 </Plugin>
 EOF
 fi
-
+  eend 0
 }
