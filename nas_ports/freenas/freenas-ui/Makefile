@@ -25,7 +25,7 @@ RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}django110>0:www/py-django110 \
 	${PYTHON_PKGNAMEPREFIX}dojango>0:www/py-dojango \
 	${PYTHON_PKGNAMEPREFIX}sysctl>0:devel/py-sysctl \
 	${PYTHON_PKGNAMEPREFIX}lxml>0:devel/py-lxml \
-	${PYTHON_PKGNAMEPREFIX}pybonjour>0:dns/py-bonjour \
+	${PYTHON_PKGNAMEPREFIX}freenas-pybonjour>0:freenas/py-bonjour \
 	${PYTHON_PKGNAMEPREFIX}dnspython>0:dns/py-dnspython \
 	${PYTHON_PKGNAMEPREFIX}requests>0:www/py-requests \
 	${PYTHON_PKGNAMEPREFIX}requests-toolbelt>0:www/py-requests-toolbelt \
