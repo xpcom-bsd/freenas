@@ -26,7 +26,6 @@
 
 import freenasUI.settings
 import csv
-import io
 import logging
 import os
 import re
@@ -37,6 +36,8 @@ import codecs
 
 from os import popen
 from django.utils.translation import ugettext_lazy as _
+
+from freenasUI.middleware.client import client
 
 log = logging.getLogger('choices')
 
@@ -447,7 +448,7 @@ class NICChoices(object):
     def __init__(self, nolagg=False, novlan=False, noloopback=True, notap=True,
                  exclude_configured=True, include_vlan_parent=False,
                  exclude_unconfigured_vlan_parent=False,
-                 with_alias=False, nobridge=True, noepair=True):
+                 with_alias=False, nobridge=True, noepair=True, include_lagg_parent=True):
 
         self.nolagg = nolagg
         self.novlan = novlan
@@ -457,8 +458,9 @@ class NICChoices(object):
         self.include_vlan_parent = include_vlan_parent
         self.exclude_unconfigured_vlan_parent = exclude_unconfigured_vlan_parent
         self.with_alias = with_alias
-        self.nobridge = noepair
+        self.nobridge = nobridge
         self.noepair = noepair
+        self.include_lagg_parent = include_lagg_parent
 
     def __iter__(self):
         pipe = popen("/sbin/ifconfig -l")
@@ -483,14 +485,15 @@ class NICChoices(object):
         # Database queries are wrapped in try/except as this is run
         # before the database is created during syncdb and the queries
         # will fail
-        try:
-            c.execute("SELECT lagg_physnic FROM network_lagginterfacemembers")
-        except sqlite3.OperationalError:
-            pass
-        else:
-            for interface in c:
-                if interface[0] in self._NIClist:
-                    self._NIClist.remove(interface[0])
+        if self.include_lagg_parent:
+            try:
+                c.execute("SELECT lagg_physnic FROM network_lagginterfacemembers")
+            except sqlite3.OperationalError:
+                pass
+            else:
+                for interface in c:
+                    if interface[0] in self._NIClist:
+                        self._NIClist.remove(interface[0])
 
         if self.nolagg:
             # vlan devices are not valid parents of laggs
@@ -777,29 +780,14 @@ SED_USER = (
 
 
 class UPSDRIVER_CHOICES(object):
-    "Populate choices from /usr/local/etc/nut/driver.list"
     def __iter__(self):
-        if os.path.exists("/conf/base/etc/local/nut/driver.list"):
-            with open('/conf/base/etc/local/nut/driver.list', 'rb') as f:
-                d = f.read().decode('utf8', 'ignore')
-            r = io.StringIO()
-            for line in re.sub(r'[ \t]+', ' ', d, flags=re.M).split('\n'):
-                r.write(line.strip() + '\n')
-            r.seek(0)
-            reader = csv.reader(r, delimiter=' ', quotechar='"')
-            for row in reader:
-                if len(row) == 0 or row[0].startswith('#'):
-                    continue
-                if row[-2] == '#':
-                    last = -3
-                else:
-                    last = -1
-                if row[last].find(' (experimental)') != -1:
-                    row[last] = row[last].replace(' (experimental)', '').strip()
-                for i, field in enumerate(list(row)):
-                    row[i] = field
-                yield ("$".join([row[last], row[3]]), "%s (%s)" %
-                       (" ".join(row[0:last]), row[last]))
+        try:
+            with client as c:
+                driver_choices_dict = c.call('ups.driver_choices')
+                for key, value in driver_choices_dict.items():
+                    yield (key, value)
+        except Exception:
+            yield (None, None)
 
 
 LDAP_SSL_CHOICES = (
@@ -989,19 +977,13 @@ CASE_SENSITIVITY_CHOICES = (
 class SERIAL_CHOICES(object):
 
     def __iter__(self):
-        from freenasUI.middleware.notifier import notifier
-        _n = notifier()
-        if not _n.is_freenas() and _n.failover_hardware() == "ECHOSTREAM":
-            yield ('0x3f8', '0x3f8')
-        else:
-            pipe = popen("/usr/sbin/devinfo -u | "
-                         "grep -A 99999 '^I/O ports:' | "
-                         "sed -En 's/ *([0-9a-fA-Fx]+).*\(uart[0-9]+\)/\\1/p'")
-            ports = [y for y in pipe.read().strip().strip('\n').split('\n') if y]
-            if not ports:
-                ports = ['0x2f8']
-            for p in ports:
-                yield (p, p)
+        try:
+            with client as c:
+                ports = c.call('system.advanced.serial_port_choices')
+        except Exception:
+            ports = ['0x2f8']
+        for p in ports:
+            yield (p, p)
 
 
 TUNABLE_TYPES = (
@@ -1164,26 +1146,15 @@ class IDMAP_CHOICES(object):
 
 
 class CIFS_VFS_OBJECTS(object):
-    def __init__(self):
-        self.__vfs_modules_path = '/usr/local/lib/shared-modules/vfs'
-        self.__vfs_modules = []
-        self.__vfs_exclude = {'shadow_copy2', 'recycle', 'aio_pthread'}
-
-        if os.path.exists(self.__vfs_modules_path):
-            self.__vfs_modules.extend(
-                filter(
-                    lambda m: m not in self.__vfs_exclude,
-                    map(
-                        lambda f: f.rpartition('.')[0],
-                        os.listdir(self.__vfs_modules_path)
-                    )
-                )
-            )
-        else:
-            self.__vfs_modules.extend(['streams_xattr'])
-
     def __iter__(self):
-        return iter((m, m) for m in sorted(self.__vfs_modules))
+        try:
+            with client as c:
+                cifs_list = c.call('sharing.cifs.vfsobjects_choices')
+                for value in sorted(cifs_list):
+                    # This is really a fake tuple
+                    yield (value, value)
+        except Exception:
+            yield (None, None)
 
 
 AFP_MAP_ACLS_CHOICES = (

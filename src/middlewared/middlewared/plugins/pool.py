@@ -1,7 +1,7 @@
 import asyncio
 import errno
 import logging
-from datetime import datetime
+from datetime import datetime, time
 import os
 import re
 import subprocess
@@ -10,11 +10,12 @@ import sysctl
 import bsd
 
 from middlewared.job import JobProgressBuffer
-from middlewared.schema import accepts, Bool, Dict, Int, List, Patch, Str
+from middlewared.schema import accepts, Bool, Cron, Dict, Int, List, Patch, Str
 from middlewared.service import (
-    filterable, item_method, job, private, CallError, CRUDService, ValidationErrors,
+    ConfigService, filterable, item_method, job, private, CallError, CRUDService, ValidationErrors
 )
 from middlewared.utils import Popen, filter_list, run
+from middlewared.validators import Range, Time
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,79 @@ async def mount(device, path, fs_type, fs_options, options):
         ))
     else:
         return True
+
+
+class PoolResilverService(ConfigService):
+
+    class Config:
+        namespace = 'pool.resilver'
+        datastore = 'storage.resilver'
+        datastore_extend = 'pool.resilver.resilver_extend'
+
+    async def resilver_extend(self, data):
+        data['begin'] = data['begin'].strftime('%H:%M')
+        data['end'] = data['end'].strftime('%H:%M')
+        data['weekday'] = [int(v) for v in data['weekday'].split(',')]
+        return data
+
+    async def validate_fields_and_update(self, data, schema):
+        verrors = ValidationErrors()
+
+        begin = data.get('begin')
+        if begin:
+            data['begin'] = time(int(begin.split(':')[0]), int(begin.split(':')[1]))
+
+        end = data.get('end')
+        if end:
+            data['end'] = time(int(end.split(':')[0]), int(end.split(':')[1]))
+
+        weekdays = data.get('weekday')
+        if weekdays:
+            if len([day for day in weekdays if day not in range(1, 8)]) > 0:
+                verrors.add(
+                    f'{schema}.weekday',
+                    'The week days should be in range of 1-7 inclusive'
+                )
+            else:
+                data['weekday'] = ','.join([str(day) for day in weekdays])
+
+        return verrors, data
+
+    @accepts(
+        Dict(
+            'pool_resilver',
+            Str('begin', validators=[Time()]),
+            Str('end', validators=[Time()]),
+            Bool('enabled'),
+            List('weekday', items=[Int('weekday')])
+        )
+    )
+    async def do_update(self, data):
+        config = await self.config()
+        original_config = config.copy()
+        config.update(data)
+
+        verrors, new_config = await self.validate_fields_and_update(config, 'pool_resilver_update')
+        if verrors:
+            raise verrors
+
+        # before checking if any changes have been made, original_config needs to be mapped to new_config
+        original_config['weekday'] = ','.join([str(day) for day in original_config['weekday']])
+        original_config['begin'] = time(*(int(value) for value in original_config['begin'].split(':')))
+        original_config['end'] = time(*(int(value) for value in original_config['end'].split(':')))
+        if len(set(original_config.items()) ^ set(new_config.items())) > 0:
+            # data has changed
+            await self.middleware.call(
+                'datastore.update',
+                self._config.datastore,
+                new_config['id'],
+                new_config
+            )
+
+            await self.middleware.call('service.restart', 'cron', {'onetime': False})
+            await self.middleware.call('pool.configure_resilver_priority')
+
+        return await self.config()
 
 
 class KernelModuleContextManager:
@@ -451,6 +525,13 @@ class PoolDatasetService(CRUDService):
                     dataset[i]['value'] = method(dataset[i]['value'])
             del dataset['properties']
 
+            if dataset['type'] == 'FILESYSTEM':
+                dataset['share_type'] = self.middleware.call_sync(
+                    'notifier.get_dataset_share_type', dataset['name'],
+                ).upper()
+            else:
+                dataset['share_type'] = None
+
             rv = []
             for child in dataset['children']:
                 rv.append(transform(child))
@@ -492,6 +573,7 @@ class PoolDatasetService(CRUDService):
             '512', '1K', '2K', '4K', '8K', '16K', '32K', '64K', '128K', '256K', '512K', '1024K',
         ]),
         Str('casesensitivity', enum=['SENSITIVE', 'INSENSITIVE', 'MIXED']),
+        Str('share_type', enum=['UNIX', 'WINDOWS', 'MAC'], default='UNIX'),
         register=True,
     ))
     async def do_create(self, data):
@@ -538,6 +620,11 @@ class PoolDatasetService(CRUDService):
             'properties': props,
         })
 
+        if data['type'] == 'FILESYSTEM':
+            await self.middleware.call(
+                'notifier.change_dataset_share_type', data['name'], data['share_type'].lower()
+            )
+
         await self.middleware.call('zfs.dataset.mount', data['name'])
 
     def _add_inherit(name):
@@ -560,6 +647,7 @@ class PoolDatasetService(CRUDService):
         ('edit', _add_inherit('readonly')),
         ('edit', _add_inherit('recordsize')),
         ('edit', _add_inherit('snapdir')),
+        ('attr', {'update': True}),
     ))
     async def do_update(self, id, data):
         """
@@ -603,7 +691,14 @@ class PoolDatasetService(CRUDService):
             else:
                 props[name] = {'value': data[i] if not transform else transform(data[i])}
 
-        return await self.middleware.call('zfs.dataset.update', id, {'properties': props})
+        rv = await self.middleware.call('zfs.dataset.update', id, {'properties': props})
+
+        if data['type'] == 'FILESYSTEM' and 'share_type' in data:
+            await self.middleware.call(
+                'notifier.change_dataset_share_type', id, data['share_type'].lower()
+            )
+
+        return rv
 
     async def __common_validation(self, verrors, schema, data, mode):
         assert mode in ('CREATE', 'UPDATE')
@@ -617,7 +712,7 @@ class PoolDatasetService(CRUDService):
                 verrors.add(f'{schema}.volsize', 'This field is required for VOLUME')
 
             for i in (
-                'atime', 'casesensitivity', 'quota', 'refquota', 'recordsize',
+                'atime', 'casesensitivity', 'quota', 'refquota', 'recordsize', 'share_type',
             ):
                 if i in data:
                     verrors.add(f'{schema}.{i}', 'This field is not valid for VOLUME')
@@ -638,6 +733,146 @@ class PoolDatasetService(CRUDService):
         if not dataset[0]['properties']['origin']['value']:
             raise CallError('Only cloned datasets can be promoted.', errno.EBADMSG)
         return await self.middleware.call('zfs.dataset.promote', id)
+
+
+class PoolScrubService(CRUDService):
+
+    class Config:
+        datastore = 'storage.scrub'
+        datastore_extend = 'pool.scrub.pool_scrub_extend'
+        datastore_prefix = 'scrub_'
+        namespace = 'pool.scrub'
+
+    @private
+    async def pool_scrub_extend(self, data):
+        data['pool'] = data.pop('volume')
+        data['pool'] = data['pool']['id']
+        Cron.convert_db_format_to_schedule(data)
+        return data
+
+    @private
+    async def validate_data(self, data, schema):
+        verrors = ValidationErrors()
+
+        pool_pk = data.get('pool')
+        if pool_pk:
+            pool_obj = await self.middleware.call(
+                'datastore.query',
+                'storage.volume',
+                [('id', '=', pool_pk)]
+            )
+
+            if len(pool_obj) == 0:
+                verrors.add(
+                    f'{schema}.pool',
+                    'The specified volume does not exist'
+                )
+            elif (
+                    'id' not in data.keys() or
+                    (
+                        'id' in data.keys() and
+                        'original_pool_id' in data.keys() and
+                        pool_pk != data['original_pool_id']
+                    )
+            ):
+                scrub_obj = await self.query(filters=[('volume_id', '=', pool_pk)])
+                if len(scrub_obj) != 0:
+                    verrors.add(
+                        f'{schema}.pool',
+                        'A scrub with this pool already exists'
+                    )
+
+        return verrors, data
+
+    @accepts(
+        Dict(
+            'pool_scrub_create',
+            Int('pool', validators=[Range(min=1)], required=True),
+            Int('threshold', validators=[Range(min=0)]),
+            Str('description'),
+            Cron('schedule'),
+            Bool('enabled'),
+            register=True
+        )
+    )
+    async def do_create(self, data):
+        verrors, data = await self.validate_data(data, 'pool_scrub_create')
+
+        if verrors:
+            raise verrors
+
+        data['volume'] = data.pop('pool')
+        Cron.convert_schedule_to_db_format(data)
+
+        data['id'] = await self.middleware.call(
+            'datastore.insert',
+            self._config.datastore,
+            data,
+            {'prefix': self._config.datastore_prefix}
+        )
+
+        await self.middleware.call(
+            'service.restart',
+            'cron',
+            {'onetime': False}
+        )
+
+        return await self.query(filters=[('id', '=', data['id'])], options={'get': True})
+
+    @accepts(
+        Int('id', validators=[Range(min=1)]),
+        Patch('pool_scrub_create', 'pool_scrub_update', ('attr', {'update': True}))
+    )
+    async def do_update(self, id, data):
+        task_data = await self.query(filters=[('id', '=', id)], options={'get': True})
+        original_data = task_data.copy()
+        task_data['original_pool_id'] = original_data['pool']
+        task_data.update(data)
+        verrors, task_data = await self.validate_data(task_data, 'pool_scrub_update')
+
+        if verrors:
+            raise verrors
+
+        task_data.pop('original_pool_id')
+        Cron.convert_schedule_to_db_format(task_data)
+        Cron.convert_schedule_to_db_format(original_data)
+
+        if len(set(task_data.items()) ^ set(original_data.items())) > 0:
+
+            task_data['volume'] = task_data.pop('pool')
+
+            await self.middleware.call(
+                'datastore.update',
+                self._config.datastore,
+                id,
+                task_data,
+                {'prefix': self._config.datastore_prefix}
+            )
+
+            await self.middleware.call(
+                'service.restart',
+                'cron',
+                {'onetime': False}
+            )
+
+        return await self.query(filters=[('id', '=', id)], options={'get': True})
+
+    @accepts(
+        Int('id')
+    )
+    async def do_delete(self, id):
+        response = await self.middleware.call(
+            'datastore.delete',
+            self._config.datastore,
+            id
+        )
+
+        await self.middleware.call(
+            'service.restart',
+            'cron',
+            {'onetime': False}
+        )
+        return response
 
 
 def setup(middleware):

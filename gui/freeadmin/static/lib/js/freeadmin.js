@@ -1558,7 +1558,7 @@ require([
         var provider = registry.byId("id_provider").get('value');
 
         var PROVIDER_MAP = {
-          'AMAZON': ['access_key', 'secret_key'],
+          'AMAZON': ['access_key', 'secret_key', 'endpoint'],
           'AZURE': ['account_name', 'account_key'],
           'BACKBLAZE': ['account_id', 'app_key'],
           'GCLOUD': ['keyfile']
@@ -2696,6 +2696,16 @@ require([
             url: url,
             nodes: nodes
             });
+    }
+
+    jobLogs = function(job_id) {
+        commonDialog({
+            id: "job_logs_dialog",
+            style: "max-width: 75%;max-height:70%;background-color:white;overflow:auto;",
+            name: "Logs",
+            url: "/legacy/system/job/" + job_id + "/logs/",
+            nodes: []
+        });
     }
 
     viewModel = function(name, url, tab) {

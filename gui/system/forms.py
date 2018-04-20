@@ -68,7 +68,6 @@ from freenasUI.common.ssl import (create_certificate,
                                   create_self_signed_CA, export_privatekey,
                                   generate_key, load_certificate,
                                   load_privatekey, sign_certificate)
-from freenasUI.common.system import test_ntp_server
 from freenasUI.directoryservice.forms import (ActiveDirectoryForm, LDAPForm,
                                               NISForm)
 from freenasUI.directoryservice.models import LDAP, NIS, ActiveDirectory
@@ -1012,7 +1011,21 @@ class ManualUpdateWizard(FileWizard):
             raise
 
 
-class SettingsForm(ModelForm):
+class SettingsForm(MiddlewareModelForm, ModelForm):
+
+    middleware_attr_prefix = 'stg_'
+    middleware_attr_schema = 'general_settings'
+    middleware_plugin = 'system.general'
+    is_singletone = True
+    middleware_attr_map = {
+        'ui_address': 'stg_guiaddress',
+        'ui_certificate': 'stg_guicertificate',
+        'ui_httpsport': 'stg_guihttpsport',
+        'ui_httpsredirect': 'stg_guihttpsredirect',
+        'ui_port': 'stg_guiport',
+        'ui_protocol': 'stg_guiprotocol',
+        'ui_v6address': 'stg_guiv6address'
+    }
 
     class Meta:
         fields = '__all__'
@@ -1027,12 +1040,7 @@ class SettingsForm(ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(SettingsForm, self).__init__(*args, **kwargs)
-        for i in (
-            'stg_guiprotocol', 'stg_guiaddress', 'stg_guiport',
-            'stg_guihttpsport', 'stg_guihttpsredirect', 'stg_sysloglevel',
-            'stg_syslogserver', 'stg_guicertificate', 'stg_timezone',
-        ):
-            setattr(self.instance, f'_original_{i}', getattr(self.instance, i))
+        self.original_instance = dict(self.instance.__dict__)
 
         self.fields['stg_language'].choices = settings.LANGUAGES
         self.fields['stg_language'].label = _("Language (Require UI reload)")
@@ -1050,51 +1058,26 @@ class SettingsForm(ModelForm):
             ['::', '::']
         ] + list(choices.IPChoices(ipv4=False))
 
-    def clean(self):
-        cdata = self.cleaned_data
+    def middleware_clean(self, update):
+        keys = update.keys()
+        for key in keys:
+            if key.startswith('gui'):
+                update['ui_' + key[3:]] = update.pop(key)
 
-        # todo: make this and ix-syslogd support udp6
-        if cdata["stg_syslogserver"]:
-            syslogserver = cdata.get("stg_syslogserver")
-            match = re.match("^[\w\.\-]+(\:\d+)?$", syslogserver)
-            if match is None:
-                self._errors['stg_syslogserver'] = self.error_class([_(
-                    "Invalid syslog server format")
-                ])
-
-        proto = cdata.get("stg_guiprotocol")
-        if proto == "http":
-            return cdata
-
-        if not cdata["stg_guicertificate"]:
-            raise forms.ValidationError(
-                "HTTPS is specified without a certificate.")
-        else:
-            certificate_obj = models.Certificate.objects.get(cert_name=cdata["stg_guicertificate"])
-            fingerprint = certificate_obj.get_fingerprint()
-            # using log.error since it logs to /var/log/messages, /var/log/debug.log as well as /dev/console all at once
-            log.error("Fingerprint of the certificate used in the GUI: " + fingerprint)
-        return cdata
-
-    def save(self):
-        obj = super(SettingsForm, self).save()
-        if (self.instance._original_stg_sysloglevel != self.instance.stg_sysloglevel or
-                self.instance._original_stg_syslogserver != self.instance.stg_syslogserver):
-            notifier().restart("syslogd")
-        cache.set('guiLanguage', obj.stg_language)
-        notifier().reload("timeservices")
-        if self.instance._original_stg_timezone != self.instance.stg_timezone:
-            notifier().restart("cron")
-        return obj
+        update['ui_protocol'] = update['ui_protocol'].upper()
+        update['sysloglevel'] = update['sysloglevel'].upper()
+        return update
 
     def done(self, request, events):
+        cache.set('guiLanguage', self.instance.stg_language)
+
         if (
-            self.instance._original_stg_guiprotocol != self.instance.stg_guiprotocol or
-            self.instance._original_stg_guiaddress != self.instance.stg_guiaddress or
-            self.instance._original_stg_guiport != self.instance.stg_guiport or
-            self.instance._original_stg_guihttpsport != self.instance.stg_guihttpsport or
-            self.instance._original_stg_guihttpsredirect != self.instance.stg_guihttpsredirect or
-            self.instance._original_stg_guicertificate != self.instance.stg_guicertificate
+            self.original_instance['stg_guiprotocol'] != self.instance.stg_guiprotocol or
+            self.original_instance['stg_guiaddress'] != self.instance.stg_guiaddress or
+            self.original_instance['stg_guiport'] != self.instance.stg_guiport or
+            self.original_instance['stg_guihttpsport'] != self.instance.stg_guihttpsport or
+            self.original_instance['stg_guihttpsredirect'] != self.instance.stg_guihttpsredirect or
+            self.original_instance['stg_guicertificate_id'] != self.instance.stg_guicertificate_id
         ):
             if self.instance.stg_guiaddress == "0.0.0.0":
                 address = request.META['HTTP_HOST'].split(':')[0]
@@ -1104,26 +1087,29 @@ class SettingsForm(ModelForm):
                 protocol = 'http'
             else:
                 protocol = self.instance.stg_guiprotocol
-            newurl = "%s://%s" % (
+
+            newurl = "%s://%s/legacy/" % (
                 protocol,
                 address
             )
+
             if self.instance.stg_guiport and protocol == 'http':
                 newurl += ":" + str(self.instance.stg_guiport)
             elif self.instance.stg_guihttpsport and protocol == 'https':
                 newurl += ":" + str(self.instance.stg_guihttpsport)
-            notifier().start_ssl("nginx")
-            if self.instance._original_stg_guiprotocol != self.instance.stg_guiprotocol:
+
+            if self.original_instance['stg_guiprotocol'] != self.instance.stg_guiprotocol:
                 events.append("evilrestartHttpd('%s')" % newurl)
             else:
                 events.append("restartHttpd('%s')" % newurl)
-        if self.instance._original_stg_timezone != self.instance.stg_timezone:
+
+        if self.original_instance['stg_timezone'] != self.instance.stg_timezone:
             os.environ['TZ'] = self.instance.stg_timezone
             time.tzset()
             timezone.activate(self.instance.stg_timezone)
 
 
-class NTPForm(ModelForm):
+class NTPForm(MiddlewareModelForm, ModelForm):
 
     force = forms.BooleanField(
         label=_("Force"),
@@ -1133,50 +1119,28 @@ class NTPForm(ModelForm):
         ),
     )
 
+    middleware_attr_prefix = "ntp_"
+    middleware_attr_schema = "ntp"
+    middleware_plugin = "system.ntpserver"
+    is_singletone = False
+
     class Meta:
         fields = '__all__'
         model = models.NTPServer
 
-    def __init__(self, *args, **kwargs):
-        super(NTPForm, self).__init__(*args, **kwargs)
-        self.usable = True
+    def middleware_clean(self, data):
+        data['force'] = self.cleaned_data.get('force')
 
-    def clean_ntp_address(self):
-        addr = self.cleaned_data.get("ntp_address")
-
-        ntp_test = test_ntp_server(addr)
-
-        if ntp_test is False:
-            self.usable = False
-
-        return addr
-
-    def clean_ntp_maxpoll(self):
-        maxp = self.cleaned_data.get("ntp_maxpoll")
-        minp = self.cleaned_data.get("ntp_minpoll")
-        if not maxp > minp:
-            raise forms.ValidationError(_(
-                "Max Poll should be higher than Min Poll"
-            ))
-        return maxp
-
-    def clean(self):
-        cdata = self.cleaned_data
-        if not cdata.get("force", False) and not self.usable:
-            self._errors['ntp_address'] = self.error_class([_(
-                "Server could not be reached. Check \"Force\" to continue "
-                "regardless."
-            )])
-            del cdata['ntp_address']
-        return cdata
-
-    def save(self):
-        super(NTPForm, self).save()
-        notifier().start("ix-ntpd")
-        notifier().restart("ntpd")
+        return data
 
 
-class AdvancedForm(ModelForm):
+class AdvancedForm(MiddlewareModelForm, ModelForm):
+
+    middleware_attr_prefix = 'adv_'
+    middleware_attr_schema = 'advanced_settings'
+    middleware_plugin = 'system.advanced'
+    is_singletone = True
+
     class Meta:
         fields = '__all__'
         model = models.Advanced
@@ -1184,81 +1148,25 @@ class AdvancedForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(AdvancedForm, self).__init__(*args, **kwargs)
         self.fields['adv_motd'].strip = False
-        self.instance._original_adv_motd = self.instance.adv_motd
-        self.instance._original_adv_consolemenu = self.instance.adv_consolemenu
-        self.instance._original_adv_powerdaemon = self.instance.adv_powerdaemon
-        self.instance._original_adv_serialconsole = (
-            self.instance.adv_serialconsole
-        )
-        self.instance._original_adv_serialspeed = self.instance.adv_serialspeed
-        self.instance._original_adv_serialport = self.instance.adv_serialport
-        self.instance._original_adv_consolescreensaver = (
-            self.instance.adv_consolescreensaver
-        )
-        self.instance._original_adv_consolemsg = self.instance.adv_consolemsg
-        self.instance._original_adv_advancedmode = (
-            self.instance.adv_advancedmode
-        )
-        self.instance._original_adv_autotune = self.instance.adv_autotune
-        self.instance._original_adv_debugkernel = self.instance.adv_debugkernel
-        self.instance._original_adv_periodic_notifyuser = self.instance.adv_periodic_notifyuser
-        self.instance._original_adv_cpu_in_percentage = self.instance.adv_cpu_in_percentage
-        self.instance._original_adv_graphite = self.instance.adv_graphite
-        self.instance._original_adv_fqdn_syslog = self.instance.adv_fqdn_syslog
+        self.original_instance = dict(self.instance.__dict__)
 
-    def save(self):
-        super(AdvancedForm, self).save()
-        loader_reloaded = False
-        if self.instance._original_adv_motd != self.instance.adv_motd:
-            notifier().start("motd")
-        if self.instance._original_adv_consolemenu != self.instance.adv_consolemenu:
-            notifier().start("ttys")
-        if self.instance._original_adv_powerdaemon != self.instance.adv_powerdaemon:
-            notifier().restart("powerd")
-        if self.instance._original_adv_serialconsole != self.instance.adv_serialconsole:
-            notifier().start("ttys")
-            if not loader_reloaded:
-                notifier().reload("loader")
-                loader_reloaded = True
-        elif (self.instance._original_adv_serialspeed != self.instance.adv_serialspeed or
-                self.instance._original_adv_serialport != self.instance.adv_serialport):
-            if not loader_reloaded:
-                notifier().reload("loader")
-                loader_reloaded = True
-        if self.instance._original_adv_consolescreensaver != self.instance.adv_consolescreensaver:
-            if self.instance.adv_consolescreensaver == 0:
-                notifier().stop("saver")
-            else:
-                notifier().start("saver")
-            if not loader_reloaded:
-                notifier().reload("loader")
-                loader_reloaded = True
-        if (
-            self.instance._original_adv_autotune != self.instance.adv_autotune and
-            not loader_reloaded
-        ):
-            notifier().reload("loader")
-        if self.instance._original_adv_debugkernel != self.instance.adv_debugkernel:
-            notifier().reload("loader")
-        if self.instance._original_adv_periodic_notifyuser != self.instance.adv_periodic_notifyuser:
-            notifier().start("ix-periodic")
-        if (self.instance._original_adv_cpu_in_percentage != self.instance.adv_cpu_in_percentage or
-                self.instance._original_adv_graphite != self.instance.adv_graphite):
-            notifier().restart("collectd")
-        if self.instance._original_adv_fqdn_syslog != self.instance.adv_fqdn_syslog:
-            notifier().restart("syslogd")
+    def middleware_clean(self, data):
+        if data.get('sed_user'):
+            data['sed_user'] = data['sed_user'].upper()
+
+        return data
 
     def done(self, request, events):
-        if self.instance._original_adv_consolemsg != self.instance.adv_consolemsg:
+        if self.original_instance['adv_consolemsg'] != self.instance.adv_consolemsg:
             if self.instance.adv_consolemsg:
                 events.append("_msg_start()")
             else:
                 events.append("_msg_stop()")
-        if self.instance._original_adv_advancedmode != self.instance.adv_advancedmode:
+        if self.original_instance['adv_advancedmode'] != self.instance.adv_advancedmode:
             # Invalidate cache
             request.session.pop("adv_mode", None)
         if (
-            self.instance._original_adv_autotune != self.instance.adv_autotune and
+            self.original_instance['adv_autotune'] != self.instance.adv_autotune and
             self.instance.adv_autotune is True
         ):
             events.append("refreshTree()")
@@ -2388,7 +2296,7 @@ class InitialWizardVolumeImportForm(VolumeAutoImportForm):
             return False
         if Volume.objects.all().exists():
             return False
-        return len(cls._unused_volumes()) > 0
+        return len(cls._volume_choices()) > 0
 
 
 class InitialWizardSettingsForm(Form):
@@ -3486,9 +3394,16 @@ class CloudCredentialsForm(ModelForm):
         label=_('Access Key'),
         max_length=200,
         required=False,
+        widget=forms.widgets.PasswordInput(render_value=True),
     )
     AMAZON_secret_key = forms.CharField(
         label=_('Secret Key'),
+        max_length=200,
+        required=False,
+        widget=forms.widgets.PasswordInput(render_value=True),
+    )
+    AMAZON_endpoint = forms.CharField(
+        label=_('Endpoint URL'),
         max_length=200,
         required=False,
     )
@@ -3501,6 +3416,7 @@ class CloudCredentialsForm(ModelForm):
         label=_('Account Key'),
         max_length=200,
         required=False,
+        widget=forms.widgets.PasswordInput(render_value=True),
     )
     BACKBLAZE_account_id = forms.CharField(
         label=_('Account ID'),
@@ -3511,14 +3427,16 @@ class CloudCredentialsForm(ModelForm):
         label=_('Application Key'),
         max_length=200,
         required=False,
+        widget=forms.widgets.PasswordInput(render_value=True),
     )
     GCLOUD_keyfile = FileField(
         label=_('JSON Service Account Key'),
         required=False,
+        widget=forms.widgets.PasswordInput(render_value=True),
     )
 
     PROVIDER_MAP = {
-        'AMAZON': ['access_key', 'secret_key'],
+        'AMAZON': ['access_key', 'secret_key', 'endpoint'],
         'AZURE': ['account_name', 'account_key'],
         'BACKBLAZE': ['account_id', 'app_key'],
         'GCLOUD': ['keyfile'],
@@ -3555,7 +3473,8 @@ class CloudCredentialsForm(ModelForm):
         if not provider:
             return self.cleaned_data
         for field in self.PROVIDER_MAP.get(provider, []):
-            if not self.cleaned_data.get(f'{provider}_{field}'):
+            if (f'{provider}_{field}' not in ['AMAZON_endpoint'] and
+                    not self.cleaned_data.get(f'{provider}_{field}')):
                 self._errors[f'{provider}_{field}'] = self.error_class([_('This field is required.')])
         return self.cleaned_data
 

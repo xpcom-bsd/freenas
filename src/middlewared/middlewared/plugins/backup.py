@@ -69,32 +69,28 @@ async def rclone(job, backup, config):
         proc = await Popen(
             args,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
         )
         check_task = asyncio.ensure_future(rclone_check_progress(job, proc))
         await proc.wait()
         if proc.returncode != 0:
             await asyncio.wait_for(check_task, None)
-            raise ValueError('rclone failed: {}'.format(check_task.result()))
+            raise ValueError("rclone failed")
         return True
 
 
 async def rclone_check_progress(job, proc):
     RE_TRANSF = re.compile(r'Transferred:\s*?(.+)$', re.S)
-    read_buffer = ''
     while True:
-        read = (await proc.stderr.readline()).decode()
+        read = (await proc.stdout.readline()).decode()
+        job.logs_fd.write(read.encode("utf-8", "ignore"))
         if read == '':
             break
-        read_buffer += read
-        if len(read_buffer) > 10240:
-            read_buffer = read_buffer[-10240:]
         reg = RE_TRANSF.search(read)
         if reg:
             transferred = reg.group(1).strip()
             if not transferred.isdigit():
                 job.set_progress(None, transferred)
-    return read_buffer
 
 
 def rclone_encrypt_password(password):
@@ -310,7 +306,7 @@ class BackupService(CRUDService):
 
     @item_method
     @accepts(Int('id'))
-    @job(lock=lambda args: 'backup:{}'.format(args[-1]), lock_queue_size=1)
+    @job(lock=lambda args: 'backup:{}'.format(args[-1]), lock_queue_size=1, logs=True)
     async def sync(self, job, id):
         """
         Run the backup job `id`, syncing the local data to remote.
@@ -361,6 +357,7 @@ class BackupS3Service(Service):
 
         client = boto3.client(
             's3',
+            endpoint_url=credential['attributes'].get('endpoint', '').strip() or None,
             aws_access_key_id=credential['attributes'].get('access_key'),
             aws_secret_access_key=credential['attributes'].get('secret_key'),
         )
@@ -371,7 +368,7 @@ class BackupS3Service(Service):
         """Returns buckets from a given S3 credential."""
         client = await self.get_client(id)
         buckets = []
-        for bucket in client.list_buckets()['Buckets']:
+        for bucket in (await self.middleware.run_in_io_thread(client.list_buckets))['Buckets']:
             buckets.append({
                 'name': bucket['Name'],
                 'creation_date': bucket['CreationDate'],
@@ -385,7 +382,7 @@ class BackupS3Service(Service):
         Returns bucket `name` location (region) from credential `id`.
         """
         client = await self.get_client(id)
-        response = client.get_bucket_location(Bucket=name)
+        response = (await self.middleware.run_in_io_thread(client.get_bucket_location, Bucket=name))
         return response['LocationConstraint']
 
     @private
@@ -396,6 +393,7 @@ class BackupS3Service(Service):
             "access_key_id": credential['attributes']['access_key'],
             "secret_access_key": credential['attributes']['secret_key'],
             "region": backup['attributes']['region'] or '',
+            "endpoint": credential['attributes'].get("endpoint", ""),
             "server_side_encryption": backup['attributes'].get('encryption') or '',
         })
 

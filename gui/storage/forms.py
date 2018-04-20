@@ -58,6 +58,7 @@ from freenasUI.freeadmin.views import JsonResp
 from freenasUI.middleware import zfs
 from freenasUI.middleware.client import client
 from freenasUI.middleware.exceptions import MiddlewareError
+from freenasUI.middleware.form import MiddlewareModelForm
 from freenasUI.middleware.notifier import notifier
 from freenasUI.middleware.util import JobAborted, JobFailed, upload_job_and_wait
 from freenasUI.services.exceptions import ServiceFailed
@@ -885,22 +886,29 @@ class AutoImportWizard(SessionWizardView):
         cdata = self.get_cleaned_data_for_step('1') or {}
         enc_disks = cdata.get("disks", [])
         key = cdata.get("key")
-        key.seek(0)
+        if key:
+            key.seek(0)
         passphrase = cdata.get("passphrase")
 
         cdata = self.get_cleaned_data_for_step('2') or {}
         vol = cdata['volume']
 
-        try:
-            upload_job_and_wait(key, 'pool.import_pool', {
-                'guid': vol['guid'],
-                'devices': enc_disks,
-                'passphrase': passphrase,
-            })
-        except JobAborted:
-            raise MiddlewareError(_('Import job aborted'))
-        except JobFailed as e:
-            raise MiddlewareError(_('Import job failed: %s') % e.value)
+        arg = {
+            'guid': vol['guid'],
+            'devices': enc_disks,
+            'passphrase': passphrase,
+        }
+
+        if enc_disks:
+            try:
+                upload_job_and_wait(key, 'pool.import_pool', arg)
+            except JobAborted:
+                raise MiddlewareError(_('Import job aborted'))
+            except JobFailed as e:
+                raise MiddlewareError(_('Import job failed: %s') % e.value)
+        else:
+            with client as c:
+                c.call('pool.import_pool', arg, job=True)
 
         events = ['loadalert()']
         appPool.hook_form_done('AutoImportWizard', self, self.request, events)
@@ -1585,6 +1593,17 @@ class CommonZVol(Form):
                 self.parentdata['dedup'][0]
             )
 
+        if not dedup_enabled():
+            self.fields['zvol_dedup'].widget.attrs['readonly'] = True
+            self.fields['zvol_dedup'].widget.attrs['class'] = (
+                'dijitSelectDisabled dijitDisabled')
+            self.fields['zvol_dedup'].widget.text = mark_safe(
+                '<span style="color: red;">Dedup feature not activated. '
+                'Contact <a href="mailto:truenas-support@ixsystems.com?subject'
+                '=ZFS Deduplication Activation">TrueNAS Support</a> for '
+                'assistance.</span><br />'
+            )
+
     def _zvol_force(self):
         if self._force:
             if not self.cleaned_data.get('zvol_force'):
@@ -1912,7 +1931,12 @@ class MountPointAccessForm(Form):
         )
 
 
-class ResilverForm(ModelForm):
+class ResilverForm(MiddlewareModelForm, ModelForm):
+
+    middleware_attr_schema = 'pool_resilver'
+    middleware_attr_prefix = ''
+    middleware_plugin = 'pool.resilver'
+    is_singletone = True
 
     class Meta:
         fields = '__all__'
@@ -1931,13 +1955,15 @@ class ResilverForm(ModelForm):
         super(ResilverForm, self).__init__(*args, **kwargs)
 
     def clean_weekday(self):
-        bwd = self.data.getlist('weekday')
-        return ','.join(bwd)
+        return self.data.getlist('weekday')
 
-    def done(self, *args, **kwargs):
-        notifier().restart('cron')
-        with client as c:
-            c.call('pool.configure_resilver_priority')
+    def clean_begin(self):
+        begin = self.data.get('begin')
+        return begin.strftime('%H:%M')
+
+    def clean_end(self):
+        end = self.data.get('end')
+        return end.strftime('%H:%M')
 
 
 class PeriodicSnapForm(ModelForm):
@@ -2533,7 +2559,15 @@ class ZvolDestroyForm(Form):
                 label=label)
 
 
-class ScrubForm(ModelForm):
+class ScrubForm(MiddlewareModelForm, ModelForm):
+
+    middleware_attr_prefix = 'scrub_'
+    middleware_attr_schema = 'pool_scrub'
+    middleware_plugin = 'pool.scrub'
+    is_singletone = False
+    middleware_attr_map = {
+        'pool': 'scrub_volume'
+    }
 
     class Meta:
         fields = '__all__'
@@ -2566,35 +2600,30 @@ class ScrubForm(ModelForm):
             1, 2, 3, 4, 5, 6, 7
         ])
 
-    def clean_scrub_volume(self):
-        vol = self.cleaned_data.get('scrub_volume')
-        if vol:
-            qs = models.Scrub.objects.filter(scrub_volume__id=vol.id)
-            if self.instance.id:
-                qs = qs.exclude(id=self.instance.id)
-            if qs.exists():
-                raise forms.ValidationError(
-                    _('A scrub with this volume already exists.')
-                )
-        return vol
-
     def clean_scrub_month(self):
-        m = self.data.getlist("scrub_month")
+        m = self.data.getlist('scrub_month')
         if len(m) == 12:
             return '*'
-        m = ",".join(m)
-        return m
+        else:
+            return ','.join(m)
 
     def clean_scrub_dayweek(self):
-        w = self.data.getlist("scrub_dayweek")
+        w = self.data.getlist('scrub_dayweek')
         if len(w) == 7:
             return '*'
-        w = ",".join(w)
-        return w
+        else:
+            return ','.join(w)
 
-    def save(self):
-        super(ScrubForm, self).save()
-        notifier().restart("cron")
+    def middleware_clean(self, update):
+        update['pool'] = update.pop('volume')
+        update['schedule'] = {
+            'minute': update.pop('minute'),
+            'hour': update.pop('hour'),
+            'dom': update.pop('daymonth'),
+            'month': update.pop('month'),
+            'dow': update.pop('dayweek')
+        }
+        return update
 
 
 class DiskWipeForm(Form):
@@ -2602,12 +2631,24 @@ class DiskWipeForm(Form):
     method = forms.ChoiceField(
         label=_("Method"),
         choices=(
-            ("quick", _("Quick")),
-            ("full", _("Full with zeros")),
-            ("fullrandom", _("Full with random data")),
+            ("QUICK", _("Quick")),
+            ("FULL", _("Full with zeros")),
+            ("FULL_RANDOM", _("Full with random data")),
         ),
         widget=forms.widgets.RadioSelect(),
     )
+
+    def __init__(self, *args, **kwargs):
+        self.disk = kwargs.pop('disk')
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        with client as c:
+            if self.disk in c.call('disk.get_reserved'):
+                self._errors['__all__'] = self.error_class([
+                    _('The disk %s is currently in use and cannot be wiped.') % self.disk
+                ])
+        return self.cleaned_data
 
 
 class CreatePassphraseForm(Form):
@@ -2808,6 +2849,7 @@ class UnlockPassphraseForm(Form):
             if svc == 'jails':
                 with client as c:
                     c.call('core.bulk', 'service.restart', [['jails']])
+                    c.call('core.bulk', 'jail.rc_action', [['RESTART']])
             else:
                 _notifier.restart(svc)
         _notifier.start("ix-warden")

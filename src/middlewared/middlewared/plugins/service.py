@@ -1,4 +1,5 @@
 import asyncio
+import errno
 import inspect
 import os
 import signal
@@ -7,8 +8,8 @@ import threading
 import time
 from subprocess import DEVNULL, PIPE
 
-from middlewared.schema import accepts, Bool, Dict, Int, Ref, Str
-from middlewared.service import filterable, CRUDService
+from middlewared.schema import accepts, Bool, Dict, Ref, Str
+from middlewared.service import filterable, CallError, CRUDService
 from middlewared.utils import Popen, filter_list
 
 
@@ -127,21 +128,27 @@ class ServiceService(CRUDService):
         return filter_list(services, filters, options)
 
     @accepts(
-        Int('id'),
+        Str('id_or_name'),
         Dict(
             'service-update',
             Bool('enable', default=False),
         ),
     )
-    async def do_update(self, id, data):
+    async def do_update(self, id_or_name, data):
         """
-        Update service entry of `id`.
+        Update service entry of `id_or_name`.
 
         Currently it only accepts `enable` option which means whether the
         service should start on boot.
 
         """
-        return await self.middleware.call('datastore.update', 'services.services', id, {'srv_enable': data['enable']})
+        if not id_or_name.isdigit():
+            svc = await self.middleware.call('datastore.query', 'services.services', [('srv_service', '=', id_or_name)])
+            if not svc:
+                raise CallError(f'Service {id_or_name} not found.', errno.ENOENT)
+            id_or_name = svc[0]['id']
+
+        return await self.middleware.call('datastore.update', 'services.services', id_or_name, {'srv_enable': data['enable']})
 
     @accepts(
         Str('service'),
@@ -156,7 +163,7 @@ class ServiceService(CRUDService):
 
         The helper will use method self._start_[service]() to start the service.
         If the method does not exist, it would fallback using service(8)."""
-        await self.middleware.call_hook('service.pre_start', service)
+        await self.middleware.call_hook('service.pre_action', service, 'start', options)
         sn = self._started_notify("start", service)
         await self._simplecmd("start", service, options)
         return await self.started(service, sn)
@@ -191,7 +198,7 @@ class ServiceService(CRUDService):
 
         The helper will use method self._stop_[service]() to stop the service.
         If the method does not exist, it would fallback using service(8)."""
-        await self.middleware.call_hook('service.pre_stop', service)
+        await self.middleware.call_hook('service.pre_action', service, 'stop', options)
         sn = self._started_notify("stop", service)
         await self._simplecmd("stop", service, options)
         return await self.started(service, sn)
@@ -206,7 +213,7 @@ class ServiceService(CRUDService):
 
         The helper will use method self._restart_[service]() to restart the service.
         If the method does not exist, it would fallback using service(8)."""
-        await self.middleware.call_hook('service.pre_restart', service)
+        await self.middleware.call_hook('service.pre_action', service, 'restart', options)
         sn = self._started_notify("restart", service)
         await self._simplecmd("restart", service, options)
         return await self.started(service, sn)
@@ -222,7 +229,7 @@ class ServiceService(CRUDService):
         The helper will use method self._reload_[service]() to reload the service.
         If the method does not exist, the helper will try self.restart of the
         service instead."""
-        await self.middleware.call_hook('service.pre_reload', service)
+        await self.middleware.call_hook('service.pre_action', service, 'reload', options)
         try:
             await self._simplecmd("reload", service, options)
         except Exception as e:
@@ -414,11 +421,9 @@ class ServiceService(CRUDService):
         await self._service("collectd", "start", **kwargs)
 
     async def _start_sysctl(self, **kwargs):
-        await self._service("sysctl", "start", **kwargs)
         await self._service("ix-sysctl", "start", quiet=True, **kwargs)
 
     async def _reload_sysctl(self, **kwargs):
-        await self._service("sysctl", "start", **kwargs)
         await self._service("ix-sysctl", "reload", **kwargs)
 
     async def _start_network(self, **kwargs):
@@ -480,11 +485,17 @@ class ServiceService(CRUDService):
         await self._service("ix-localtime", "start", quiet=True, **kwargs)
         await self._service("ix-ntpd", "start", quiet=True, **kwargs)
         await self._service("ntpd", "restart", **kwargs)
-        os.environ['TZ'] = await self.middleware.call('datastore.query', 'system.settings', [], {'order_by': ['-id'], 'get': True})['stg_timezone']
+        settings = await self.middleware.call(
+            'datastore.query',
+            'system.settings',
+            [],
+            {'order_by': ['-id'], 'get': True}
+        )
+        os.environ['TZ'] = settings['stg_timezone']
         time.tzset()
 
     async def _restart_smartd(self, **kwargs):
-        await self._service("ix-smartd", "start", quiet=True, **kwargs)
+        await self.middleware.call("etc.generate", "smartd")
         await self._service("smartd-daemon", "stop", force=True, **kwargs)
         await self._service("smartd-daemon", "restart", **kwargs)
 
@@ -603,10 +614,13 @@ class ServiceService(CRUDService):
     async def _started_activedirectory(self, **kwargs):
         for srv in ('kinit', 'activedirectory', ):
             if await self._system('/usr/sbin/service ix-%s status' % (srv, )) != 0:
+                self.logger.debug(f'AD monitor: Failed to get ix-{srv} status')
                 return False, []
         if await self._system('/usr/local/bin/wbinfo -p') != 0:
+                self.logger.debug('AD monitor: wbinfo -p failed')
                 return False, []
         if await self._system('/usr/local/bin/wbinfo -t') != 0:
+                self.logger.debug('AD monitor: wbinfo -t failed')
                 return False, []
         return True, []
 

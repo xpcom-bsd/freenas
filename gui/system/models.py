@@ -40,7 +40,7 @@ from django.utils.translation import ugettext_lazy as _
 from OpenSSL import crypto
 
 from freenasUI import choices
-from freenasUI.freeadmin.models import DictField, Model, UserField
+from freenasUI.freeadmin.models import DictField, EncryptedDictField, Model, UserField
 from freenasUI.middleware.notifier import notifier
 from freenasUI.middleware.util import run_alerts
 from freenasUI.support.utils import get_license
@@ -319,7 +319,7 @@ class Advanced(Model):
         editable=False,
     )
     adv_motd = models.TextField(
-        max_length=1024,
+        max_length=10240,
         verbose_name=_("MOTD banner"),
         default='Welcome',
         blank=True,
@@ -1042,7 +1042,7 @@ class CloudCredentials(Model):
         max_length=50,
         choices=choices.CLOUD_PROVIDERS,
     )
-    attributes = DictField(
+    attributes = EncryptedDictField(
         editable=False,
     )
 

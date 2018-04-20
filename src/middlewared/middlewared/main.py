@@ -65,7 +65,7 @@ class Application(object):
         self.__callbacks[name].append(method)
 
     def _send(self, data):
-        self.response.send_json(data, dumps=json.dumps)
+        asyncio.ensure_future(self.response.send_json(data, dumps=json.dumps), loop=self.loop)
 
     def _tb_error(self, exc_info):
         klass, exc, trace = exc_info
@@ -562,10 +562,14 @@ class ShellWorkerThread(threading.Thread):
 
         t_reader.join()
         t_writer.join()
-        asyncio.ensure_future(self.ws.close(), loop=self.loop)
+        asyncio.run_coroutine_threadsafe(self.ws.close(), self.loop)
 
     def die(self):
         self._die = True
+
+
+class ShellConnectionData(object):
+    t_worker = None
 
 
 class ShellApplication(object):
@@ -577,9 +581,20 @@ class ShellApplication(object):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
+        conndata = ShellConnectionData()
+
+        try:
+            await self.run(ws, request, conndata)
+        except Exception as e:
+            if conndata.t_worker:
+                await self.worker_kill(conndata.t_worker)
+        finally:
+            return ws
+
+    async def run(self, ws, request, conndata):
+
         # Each connection will have its own input queue
         input_queue = queue.Queue()
-        t_worker = None
         authenticated = False
 
         async for msg in ws:
@@ -618,13 +633,19 @@ class ShellApplication(object):
                 })
 
                 jail = data.get('jail')
-                t_worker = ShellWorkerThread(ws=ws, input_queue=input_queue, loop=asyncio.get_event_loop(), jail=jail)
-                t_worker.start()
+                conndata.t_worker = ShellWorkerThread(ws=ws, input_queue=input_queue, loop=asyncio.get_event_loop(), jail=jail)
+                conndata.t_worker.start()
 
         # If connection was not authenticated, return earlier
         if not authenticated:
             return ws
 
+        if conndata.t_worker:
+            asyncio.ensure_future(self.worker_kill(conndata.t_worker))
+
+        return ws
+
+    async def worker_kill(self, t_worker):
         # If connection has been closed lets make sure shell is killed
         if t_worker.shell_pid:
 
@@ -652,8 +673,6 @@ class ShellApplication(object):
         # Wait thread join in yet another thread to avoid event loop blockage
         # There may be a simpler/better way to do this?
         await self.middleware.run_in_thread(t_worker.join)
-
-        return ws
 
 
 class Middleware(object):
@@ -806,10 +825,12 @@ class Middleware(object):
         """
         for hook in self.__hooks[name]:
             try:
+                fut = hook['method'](*args, **kwargs)
                 if hook['sync']:
-                    await hook['method'](*args, **kwargs)
+                    await fut
                 else:
-                    asyncio.ensure_future(hook['method'], *args, **kwargs)
+                    asyncio.ensure_future(fut)
+
             except Exception:
                 self.logger.error('Failed to run hook {}:{}(*{}, **{})'.format(name, hook['method'], args, kwargs), exc_info=True)
 
@@ -866,7 +887,7 @@ class Middleware(object):
     def pipe(self):
         return Pipe(self)
 
-    async def _call(self, name, serviceobj, methodobj, params=None, app=None, pipes=None):
+    async def _call(self, name, serviceobj, methodobj, params=None, app=None, pipes=None, spawn_thread=True):
 
         args = []
         if hasattr(methodobj, '_pass_app'):
@@ -900,6 +921,11 @@ class Middleware(object):
 
             if asyncio.iscoroutinefunction(methodobj):
                 return await methodobj(*args)
+            elif not spawn_thread and threading.get_ident() != self.__thread_id:
+                # If this method is already being called from a thread we dont need to spawn
+                # another one or we may run out of threads and deadlock.
+                # e.g. multiple concurrent calls to a threaded method which uses call_sync
+                return methodobj(*args)
             else:
                 tpool = None
                 if serviceobj._config.thread_pool:
@@ -941,6 +967,9 @@ class Middleware(object):
                 except Exception:
                     return args
 
+        if not hasattr(method, 'accepts'):
+            return args
+
         return [method.accepts[i].dump(arg) for i, arg in enumerate(args) if i < len(method.accepts)]
 
     async def call_method(self, app, message):
@@ -966,7 +995,7 @@ class Middleware(object):
             raise RuntimeError('You cannot call_sync from main thread')
 
         serviceobj, methodobj = self._method_lookup(name)
-        fut = asyncio.run_coroutine_threadsafe(self._call(name, serviceobj, methodobj, params), self.__loop)
+        fut = asyncio.run_coroutine_threadsafe(self._call(name, serviceobj, methodobj, params, spawn_thread=False), self.__loop)
         event = threading.Event()
 
         def done(_):
@@ -1089,8 +1118,14 @@ class Middleware(object):
         # Start up middleware worker process pool
         self.__procpool._start_queue_management_thread()
 
+        runner = web.AppRunner(app, handle_signals=False, access_log=None)
+        self.__loop.run_until_complete(runner.setup())
+        self.__loop.run_until_complete(
+            web.TCPSite(runner, '0.0.0.0', 6000, reuse_address=True, reuse_port=True).start()
+        )
+        self.__loop.run_until_complete(web.UnixSite(runner, '/var/run/middlewared.sock').start())
+
         self.logger.debug('Accepting connections')
-        web.run_app(app, host='0.0.0.0', port=6000, access_log=None)
 
         try:
             self.__loop.run_forever()

@@ -1,7 +1,9 @@
-from django.core.exceptions import ValidationError
-from django.core.validators import validate_email
 import ipaddress
 import re
+
+from datetime import time
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 
 
 class ShouldBe(Exception):
@@ -32,6 +34,21 @@ class IpAddress:
             ipaddress.ip_address(value)
         except ValueError:
             raise ShouldBe("valid IP address")
+
+
+class Time:
+    def __call__(self, value):
+        try:
+            hours, minutes = value.split(':')
+        except ValueError:
+            raise ShouldBe('Time should be in 24 hour format like "18:00"')
+        else:
+            try:
+                time(int(hours), int(minutes))
+            except TypeError:
+                raise ShouldBe('Time should be in 24 hour format like "18:00"')
+            except ValueError as v:
+                raise ShouldBe(str(v))
 
 
 class Match:
@@ -73,6 +90,8 @@ class Range:
         self.max = max
 
     def __call__(self, value):
+        if value is None:
+            return
         error = {
             (True, True): f"between {self.min} and {self.max}",
             (False, True): f"less or equal than {self.max}",

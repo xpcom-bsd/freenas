@@ -1,4 +1,4 @@
-#+
+#
 # Copyright 2010 iXsystems, Inc.
 # All rights reserved
 #
@@ -28,62 +28,48 @@ import logging
 import os
 import re
 
-from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 
 from dojango import forms
 from freenasUI.common.forms import ModelForm
 from freenasUI.freeadmin.forms import SelectMultipleWidget
+from freenasUI.freeadmin.utils import key_order
+from freenasUI.middleware.client import client
 from freenasUI.middleware.exceptions import MiddlewareError
 from freenasUI.middleware.notifier import notifier
-from freenasUI.common.pipesubr import pipeopen
+from freenasUI.middleware.form import MiddlewareModelForm
 from freenasUI.services.models import services, NFS
 from freenasUI.sharing import models
-from freenasUI.storage.models import Task
 from freenasUI.storage.widgets import UnixPermissionField
-from ipaddr import (
-    IPAddress, IPNetwork, AddressValueError, NetmaskValueError
-)
+from ipaddr import (IPNetwork, AddressValueError, NetmaskValueError)
 
 log = logging.getLogger('sharing.forms')
 
 
-class CIFS_ShareForm(ModelForm):
+class CIFS_ShareForm(MiddlewareModelForm, ModelForm):
 
-    def _get_storage_tasks(self, cifs_path=None, cifs_home=False):
-        p = pipeopen("zfs list -H -o mountpoint,name")
-        zfsout = p.communicate()[0].split('\n')
-        if p.returncode != 0:
-            zfsout = []
-
-        task_list = []
-        if cifs_path:
-            for line in zfsout:
-                try:
-                    tasks = []
-                    zfs_mp, zfs_ds = line.split()
-                    if cifs_path == zfs_mp or cifs_path.startswith("%s/" % zfs_mp):
-                        if cifs_path == zfs_mp:
-                            tasks = Task.objects.filter(task_filesystem=zfs_ds)
-                        else:
-                            tasks = Task.objects.filter(Q(task_filesystem=zfs_ds) & Q(task_recursive=True))
-                    for t in tasks:
-                        task_list.append(t)
-
-                except:
-                    pass
-
-        elif cifs_home:
-            task_list = Task.objects.filter(Q(task_recursive=True))
-
-        return task_list
+    cifs_default_permissions = forms.BooleanField(
+        label=_('Apply Default Permissions'),
+        help_text=_(
+            'Recursively set appropriate default Windows permissions on share'
+        ),
+        required=False
+    )
+    middleware_attr_prefix = "cifs_"
+    middleware_attr_schema = "cifs"
+    middleware_plugin = "sharing.cifs"
+    is_singletone = False
 
     def __init__(self, *args, **kwargs):
         super(CIFS_ShareForm, self).__init__(*args, **kwargs)
         if self.instance.id:
+            self.fields['cifs_default_permissions'].initial = False
             self._original_cifs_vfsobjects = self.instance.cifs_vfsobjects
         else:
+            self.fields['cifs_default_permissions'].initial = True
             self._original_cifs_vfsobjects = []
+
+        key_order(self, 4, 'cifs_default_permissions', instance=True)
 
         self.fields['cifs_guestok'].widget.attrs['onChange'] = (
             'javascript:toggleGeneric("id_cifs_guestok", '
@@ -94,25 +80,27 @@ class CIFS_ShareForm(ModelForm):
                     'disabled'
         elif self.instance.cifs_guestok is False:
             self.fields['cifs_guestonly'].widget.attrs['disabled'] = 'disabled'
-        self.instance._original_cifs_default_permissions = \
-            self.instance.cifs_default_permissions
         self.fields['cifs_name'].required = False
         self.fields['cifs_home'].widget.attrs['onChange'] = (
             "cifs_storage_task_toggle();"
         )
 
         if self.instance:
-            task_list = []
+            task_dict = {}
             if self.instance.cifs_path:
-                task_list = self._get_storage_tasks(cifs_path=self.instance.cifs_path)
+                with client as c:
+                    task_dict = c.call('sharing.cifs.get_storage_tasks',
+                                       self.instance.cifs_path)
 
             elif self.instance.cifs_home:
-                task_list = self._get_storage_tasks(cifs_home=self.instance.cifs_home)
+                with client as c:
+                    task_dict = c.call('sharing.cifs.get_storage_tasks',
+                                        None, self.instance.cifs_home)
 
-            if task_list:
+            if task_dict:
                 choices = [('', '-----')]
-                for task in task_list:
-                    choices.append((task.id, task))
+                for task_id, msg in task_dict.items():
+                    choices.append((task_id, msg))
                 self.fields['cifs_storage_task'].choices = choices
 
             else:
@@ -122,93 +110,26 @@ class CIFS_ShareForm(ModelForm):
         fields = '__all__'
         model = models.CIFS_Share
 
-    def clean_cifs_home(self):
-        home = self.cleaned_data.get('cifs_home')
-        if home:
-            qs = models.CIFS_Share.objects.filter(cifs_home=True)
-            if self.instance.id:
-                qs = qs.exclude(id=self.instance.id)
-            if qs.exists():
-                raise forms.ValidationError(_(
-                    'Only one share is allowed to be a home share.'
-                ))
-        return home
+    def middleware_clean(self, data):
+        data['hostsallow'] = data['hostsallow'].split()
+        data['hostsdeny'] = data['hostsdeny'].split()
 
-    def clean_cifs_name(self):
-        name = self.cleaned_data.get('cifs_name')
-        path = self.cleaned_data.get('cifs_path')
-        if path and not name:
-            name = path.rsplit('/', 1)[-1]
-        return name
+        if not data['storage_task']:
+            data.pop('storage_task')
 
-    def clean_cifs_hostsallow(self):
-        net = self.cleaned_data.get("cifs_hostsallow")
-        net = re.sub(r'\s{2,}|\n', ' ', net).strip()
-        return net
-
-    def clean_cifs_hostsdeny(self):
-        net = self.cleaned_data.get("cifs_hostsdeny")
-        net = re.sub(r'\s{2,}|\n', ' ', net).strip()
-        return net
-
-    def clean(self):
-        path = self.cleaned_data.get('cifs_path')
-        home = self.cleaned_data.get('cifs_home')
-
-        if not home and not path:
-            self._errors['cifs_path'] = self.error_class([
-                _('This field is required.')
-            ])
-
-        return self.cleaned_data
-
-    def save(self):
-        obj = super(CIFS_ShareForm, self).save(commit=False)
-        path = self.cleaned_data.get('cifs_path').encode('utf8')
-        if path and not os.path.exists(path):
-            try:
-                os.makedirs(path)
-            except OSError as e:
-                raise MiddlewareError(_(
-                    'Failed to create %(path)s: %(error)s' % {
-                        'path': path,
-                        'error': e,
-                    }
-                ))
-
-        home = self.cleaned_data.get('cifs_home')
-        task = self.cleaned_data.get('cifs_storage_task')
-        if not task:
-            task_list = []
-            if path:
-                task_list = self._get_storage_tasks(cifs_path=path)
-
-            elif home:
-                task_list = self._get_storage_tasks(cifs_home=home)
-
-            if task_list:
-                obj.cifs_storage_task = task_list[0]
-
-        obj.save()
-        notifier().reload("cifs")
-        return obj
+        return data
 
     def done(self, request, events):
         if not services.objects.get(srv_service='cifs').srv_enable:
             events.append('ask_service("cifs")')
         super(CIFS_ShareForm, self).done(request, events)
-        if self.instance._original_cifs_default_permissions != \
-            self.instance.cifs_default_permissions and \
-            self.instance.cifs_default_permissions is True:
-            try:
-                (owner, group) = notifier().mp_get_owner(self.instance.cifs_path)
-            except:
-                (owner, group) = ('root', 'wheel')
-            notifier().winacl_reset(path=self.instance.cifs_path,
-                owner=owner, group=group)
 
 
-class AFP_ShareForm(ModelForm):
+class AFP_ShareForm(MiddlewareModelForm, ModelForm):
+    middleware_attr_prefix = "afp_"
+    middleware_attr_schema = "afp"
+    middleware_plugin = "sharing.afp"
+    is_singletone = False
 
     class Meta:
         fields = '__all__'
@@ -240,116 +161,15 @@ class AFP_ShareForm(ModelForm):
                 self.fields['afp_umask'].widget.attrs['disabled'] = 'false'
         self.fields['afp_name'].required = False
 
-    def clean_afp_home(self):
-        home = self.cleaned_data.get('afp_home')
-        if home:
-            qs = models.AFP_Share.objects.filter(afp_home=True)
-            if self.instance.id:
-                qs = qs.exclude(id=self.instance.id)
-            if qs.exists():
-                raise forms.ValidationError(_(
-                    'Only one share is allowed to be a home share.'
-                ))
-        return home
+    def middleware_clean(self, data):
+        data['allow'] = data['allow'].split()
+        data['deny'] = data['deny'].split()
+        data['ro'] = data['ro'].split()
+        data['rw'] = data['rw'].split()
+        data['hostsallow'] = data['hostsallow'].split()
+        data['hostsdeny'] = data['hostsdeny'].split()
 
-    def clean_afp_hostsallow(self):
-        res = self.cleaned_data['afp_hostsallow']
-        res = re.sub(r'\s{2,}|\n', ' ', res).strip()
-        if not res:
-            return res
-        for n in res.split(' '):
-            err_n = False
-            err_a = False
-            try:
-                IPNetwork(n)
-                if n.find("/") == -1:
-                    raise ValueError(n)
-            except (AddressValueError, NetmaskValueError, ValueError):
-                err_n = True
-            try:
-                IPAddress(n)
-            except (AddressValueError, ValueError):
-                err_a = True
-            if (err_n and err_a) or (not err_n and not err_a):
-                raise forms.ValidationError(
-                    _("Invalid IP or Network.")
-                )
-        return res
-
-    def clean_afp_hostsdeny(self):
-        res = self.cleaned_data['afp_hostsdeny']
-        res = re.sub(r'\s{2,}|\n', ' ', res).strip()
-        if not res:
-            return res
-        for n in res.split(' '):
-            err_n = False
-            err_a = False
-            try:
-                IPNetwork(n)
-                if n.find("/") == -1:
-                    raise ValueError(n)
-            except (AddressValueError, NetmaskValueError, ValueError):
-                err_n = True
-            try:
-                IPAddress(n)
-            except (AddressValueError, ValueError):
-                err_a = True
-            if (err_n and err_a) or (not err_n and not err_a):
-                raise forms.ValidationError(
-                    _("Invalid IP or Network.")
-                )
-        return res
-
-    def clean_afp_name(self):
-        name = self.cleaned_data.get('afp_name')
-        path = self.cleaned_data.get('afp_path')
-        if not name:
-            if self.cleaned_data.get('afp_home'):
-                name = 'Homes'
-            elif path:
-                name = path.rsplit('/', 1)[-1]
-        qs = models.AFP_Share.objects.filter(afp_name=name)
-        if self.instance.id:
-            qs = qs.exclude(id=self.instance.id)
-        if qs.exists():
-            raise forms.ValidationError(_(
-                'A share with this name already exists.'
-            ))
-        return name
-
-    def clean_afp_umask(self):
-        umask = self.cleaned_data.get("afp_umask")
-        if umask in (None, ''):
-            return umask
-        try:
-            int(umask)
-        except:
-            raise forms.ValidationError(
-                _("The umask must be between 000 and 777.")
-            )
-        for i in range(len(umask)):
-            if int(umask[i]) > 7 or int(umask[i]) < 0:
-                raise forms.ValidationError(
-                    _("The umask must be between 000 and 777.")
-                )
-        return umask
-
-    def save(self):
-        obj = super(AFP_ShareForm, self).save(commit=False)
-        path = self.cleaned_data.get('afp_path').encode('utf8')
-        if path and not os.path.exists(path):
-            try:
-                os.makedirs(path)
-            except OSError as e:
-                raise MiddlewareError(_(
-                    'Failed to create %(path)s: %(error)s' % {
-                        'path': path,
-                        'error': e,
-                    }
-                ))
-        obj.save()
-        notifier().reload("afp")
-        return obj
+        return data
 
     def done(self, request, events):
         if not services.objects.get(srv_service='afp').srv_enable:
@@ -407,8 +227,8 @@ class NFS_ShareForm(ModelForm):
         return net
         if not net:
             return net
-        #only one address = CIDR or IP
-        #if net.find(" ") == -1:
+        # only one address = CIDR or IP
+        # if net.find(" ") == -1:
         #    try:
         #    except NetmaskValueError:
         #        IPAddress(net.encode('utf-8'))

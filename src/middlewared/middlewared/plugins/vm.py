@@ -325,6 +325,11 @@ class VMSupervisor(object):
         else:
             attach_iface_info = netif.get_interface(attach_iface)
 
+        # If for some reason the main iface is down, we need to up it.
+        attach_iface_status = netif.InterfaceFlags.UP in attach_iface_info.flags
+        if attach_iface_status is False:
+            attach_iface_info.up()
+
         for brgname, iface in list(netif.list_interfaces().items()):
             if brgname.startswith('bridge'):
                 if_bridge.append(iface)
@@ -479,6 +484,21 @@ class VMUtils(object):
                     grubcfg.write(line)
                     grubcfg.write('\n')
                 grubcfg.write('}')
+        else:
+            grub_password = 'rancher.password={0}'.format(quote(password))
+
+            with open(grub_file, 'r') as cfg_src:
+                cfg_src_data = cfg_src.read()
+                src_data = cfg_src_data.split(' ')
+                for index, data in enumerate(src_data):
+                    if data.startswith('rancher.password'):
+                        if src_data[index] == grub_password:
+                            return vm_private_dir
+                        src_data[index] = 'rancher.password={0}'.format(quote(password))
+                        break
+
+            with open(grub_file, 'w') as cfg_dst:
+                cfg_dst.write(" ".join(src_data))
 
         return vm_private_dir
 
@@ -618,7 +638,8 @@ class VMService(CRUDService):
            list: will return a list of available IPv4 address.
         """
         default_ifaces = ['0.0.0.0', '127.0.0.1']
-        ifaces = self.middleware.call_sync('interfaces.ipv4_in_use')
+        ifaces_dict_list = self.middleware.call_sync('interfaces.ip_in_use', {'ipv4': True})
+        ifaces = [alias_dict['address'] for alias_dict in ifaces_dict_list]
 
         default_ifaces.extend(ifaces)
         return default_ifaces

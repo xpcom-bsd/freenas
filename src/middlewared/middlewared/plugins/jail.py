@@ -1,4 +1,6 @@
 import os
+import time
+import subprocess as su
 
 import iocage.lib.iocage as ioc
 import libzfs
@@ -10,7 +12,7 @@ from iocage.lib.ioc_json import IOCJson
 # iocage's imports are per command, these are just general facilities
 from iocage.lib.ioc_list import IOCList
 from iocage.lib.ioc_upgrade import IOCUpgrade
-from middlewared.schema import Bool, Dict, List, Str, accepts, Int
+from middlewared.schema import Bool, Dict, Int, List, Str, accepts
 from middlewared.service import CRUDService, job, private
 from middlewared.service_exception import CallError
 from middlewared.utils import filter_list
@@ -30,17 +32,41 @@ class JailService(CRUDService):
     )
     def query(self, filters=None, options=None):
         options = options or {}
+        jail_identifier = None
         jails = []
-        try:
-            jails = [
-                list(jail.values())[0]
 
-                for jail in ioc.IOCage().get("all", recursive=True)
-            ]
+        if filters and len(filters) == 1 and list(
+                filters[0][:2]) == ['jail', '=']:
+            jail_identifier = filters[0].pop(2)
+
+        recursive = False if jail_identifier is not None else True
+
+        try:
+            jail_dicts = ioc.IOCage(
+                jail=jail_identifier).get('all', recursive=recursive)
+            for jail in jail_dicts:
+                jail = list(jail.values())[0]
+                if jail['dhcp'] == 'on':
+                    uuid = jail['host_hostuuid']
+
+                    if jail['state'] == 'up':
+                        interface = jail['interfaces'].split(',')[0].split(
+                            ':')[0]
+                        if interface == 'vnet0':
+                            # Inside jails they are epair0b
+                            interface = 'epair0b'
+                        ip4_cmd = ['jexec', f'ioc-{uuid}', 'ifconfig',
+                                   interface, 'inet']
+                        out = su.check_output(ip4_cmd)
+                        jail['ip4_address'] = f'{interface}|' \
+                            f'{out.splitlines()[2].split()[1].decode()}'
+                    else:
+                        jail['ip4_address'] = 'DHCP (not running)'
+                jails.append(jail)
         except BaseException:
             # Brandon is working on fixing this generic except, till then I
             # am not going to make the perfect the enemy of the good enough!
-            self.logger.debug("iocage failed to fetch jails", exc_info=True)
+            self.logger.debug('iocage failed to fetch jails', exc_info=True)
             pass
 
         return filter_list(jails, filters, options)
@@ -227,6 +253,22 @@ class JailService(CRUDService):
             resource_list = iocage.list(resource)
 
         return resource_list
+
+    @accepts(Str("action", enum=["START", "STOP", "RESTART"]))
+    def rc_action(self, action):
+        """Does specified action on rc enabled (boot=on) jails"""
+        iocage = ioc.IOCage(rc=True)
+
+        if action == "START":
+            iocage.start()
+        elif action == "STOP":
+            iocage.stop()
+        else:
+            iocage.stop()
+            time.sleep(0.5)
+            iocage.start()
+
+        return True
 
     @accepts(Str("jail"))
     def start(self, jail):
