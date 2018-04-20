@@ -10,7 +10,7 @@ pid="/var/run/register.pid"
 depend()
 {
 	provide ix_register
-	need mdnsd
+	need ix-mdnsd
 	keyword -jail
 }
 

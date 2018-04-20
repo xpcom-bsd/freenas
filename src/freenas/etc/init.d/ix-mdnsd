@@ -1,0 +1,11 @@
+#!/sbin/openrc-run
+
+name="mdnsd"
+description="Bonjour (zero-configuration networking) server"
+command="/usr/local/sbin/${name}"
+pidfile="/var/run/${name}.pid"
+
+depend()
+{
+	provide ix-mdnsd
+}
