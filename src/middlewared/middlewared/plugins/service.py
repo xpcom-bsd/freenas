@@ -848,7 +848,7 @@ class ServiceService(CRUDService):
 
     async def _reload_cifs(self, **kwargs):
         await self._service("ix-pre-samba", "start", quiet=True, **kwargs)
-        await self._service("samba_server", "reload", force=True, **kwargs)
+        await self._service("ix-samba", "reload", force=True, **kwargs)
         await self._service("ix-post-samba", "start", quiet=True, **kwargs)
         await self._service("mdnsd", "restart", **kwargs)
         # After mdns is restarted we need to reload netatalk to have it rereregister
@@ -857,8 +857,8 @@ class ServiceService(CRUDService):
 
     async def _restart_cifs(self, **kwargs):
         await self._service("ix-pre-samba", "start", quiet=True, **kwargs)
-        await self._service("samba_server", "stop", force=True, **kwargs)
-        await self._service("samba_server", "restart", quiet=True, **kwargs)
+        await self._service("ix-samba", "stop", force=True, **kwargs)
+        await self._service("ix-samba", "restart", quiet=True, **kwargs)
         await self._service("ix-post-samba", "start", quiet=True, **kwargs)
         await self._service("mdnsd", "restart", **kwargs)
         # After mdns is restarted we need to reload netatalk to have it rereregister
@@ -867,11 +867,11 @@ class ServiceService(CRUDService):
 
     async def _start_cifs(self, **kwargs):
         await self._service("ix-pre-samba", "start", quiet=True, **kwargs)
-        await self._service("samba_server", "start", quiet=True, **kwargs)
+        await self._service("ix-samba", "start", quiet=True, **kwargs)
         await self._service("ix-post-samba", "start", quiet=True, **kwargs)
 
     async def _stop_cifs(self, **kwargs):
-        await self._service("samba_server", "stop", force=True, **kwargs)
+        await self._service("ix-samba", "stop", force=True, **kwargs)
         await self._service("ix-post-samba", "start", quiet=True, **kwargs)
 
     async def _start_snmp(self, **kwargs):

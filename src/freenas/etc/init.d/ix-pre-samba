@@ -11,7 +11,7 @@ depend()
 {
 	provide ix-pre-samba
 	need ix-pam mountlate
-	before samba_server
+	before ix-samba
 }
 
 get_sambaSID()

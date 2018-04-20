@@ -4,7 +4,7 @@
 #
 
 # PROVIDE: ix-post-samba
-# REQUIRE: samba_server
+# REQUIRE: ix-samba
 
 . /etc/rc.freenas
 

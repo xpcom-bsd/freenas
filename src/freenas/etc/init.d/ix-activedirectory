@@ -5,7 +5,7 @@
 
 # PROVIDE: ix-activedirectory
 # REQUIRE: ix-pre-samba ix-kinit
-# BEFORE: samba_server
+# BEFORE: ix-samba
 
 . /etc/rc.freenas
 
@@ -18,7 +18,7 @@ depend()
 {
 	provide ix-activedirectory
 	need ix-pre-samba ix-kinit
-	before samba_server
+	before ix-samba
 }
 
 get_basename()

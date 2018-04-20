@@ -541,6 +541,12 @@ _gen_conf()
 	_bool_svcconfig netdata_enable netdata
 
 
+	# XXXXX XXX XXXXX
+	#
+	# We are using OpenRC now, we need to change this
+	# (and everywhere else) to work in an OpenRC world!
+	#
+	# XXXXX XXX XXXXX
 	_bool_svcconfig samba_server_enable cifs
 	if ! dirsrv_enabled domaincontroller ; then
 		_bool_svcconfig smbd_enable cifs

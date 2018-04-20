@@ -10,7 +10,7 @@ name="ix-system"
 depend()
 {
 	provide ix-system
-	before samba_server ix-syslogd ix-collectd
+	before ix-samba ix-syslogd ix-collectd
 }
 
 notifier()

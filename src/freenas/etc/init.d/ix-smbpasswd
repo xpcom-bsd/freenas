@@ -8,7 +8,7 @@ name="ix-smbpasswd"
 depend()
 {
 	provide ix-smbpasswd
-	need samba_server
+	need ix-samba
 }
 
 start()

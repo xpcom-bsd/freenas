@@ -1,0 +1,120 @@
+#!/sbin/openrc-run
+
+. /etc/rc.subr
+
+name="samba"
+
+samba_server_config="/usr/local/etc/smb4.conf"
+command_args="--daemon --configfile="${samba_server_config}""
+
+testparm_command="/usr/local/bin/testparm --suppress-prompt --verbose ${samba_server_config}"
+
+extra_commands="reload"
+
+depend()
+{
+	provide samba_server
+	need net ldconfig ntpd
+	before LOGIN
+}
+
+checkconfig()
+{
+	result=0
+
+	echo -n "Performing sanity check on Samba configuration: "
+	if ${testparm_command} >/dev/null 2>&1; then
+		echo "OK"
+	else
+		echo "FAILED"
+		result=1
+	fi
+
+	return ${result}
+}
+
+reload_pre()
+{
+	checkconfig
+}
+
+reload()
+{
+	for name in ${samba_daemons}; do
+		ebegin "Reloading ${name}"
+		/usr/local/bin/smbcontrol "${name}" 'reload-config' ${command_args} >/dev/null 2>&1
+		eend $?
+	done
+}
+
+restart_pre()
+{
+	checkconfig
+}
+
+start_pre()
+{
+	# Make sure we have our RUNDIR, even if it's on a tmpfs
+	if [ -d "${samba_server_piddir}" -o ! -e "${samba_server_piddir}" ]; then
+		install -d -m 0755 "${samba_server_piddir}"
+	fi
+
+	# https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=200186
+	if [ -d "${samba_server_privatedir}" -o ! -e "${samba_server_privatedir}" ]; then
+		install -d -m 0700 "${samba_server_privatedir}"
+	fi
+	checkconfig
+}
+
+start() {
+	result=0
+	for name in ${samba_daemons}; do
+		ebegin "Starting ${name}"
+		start-stop-daemon --start --exec "/usr/local/sbin/${name}" \
+			--pidfile "${samba_server_piddir}/${name}.pid" -- ${command_args}
+		result=$((${result} || $?))
+		eend ${result}
+	done
+	return ${result}
+}
+
+stop() {
+	result=0
+	for name in ${samba_daemons}; do
+		ebegin "Stopping ${name}"
+		start-stop-daemon --stop --exec "/usr/local/sbin/${name}" \
+			--pidfile "${samba_server_piddir}/${name}.pid"
+		result=$((${result} || $?))
+		eend ${result}
+	done
+	return ${result}
+}
+
+samba_server_config_init()
+{
+	testparm_command="/usr/local/bin/testparm --suppress-prompt --verbose ${samba_server_config}"
+
+	# Determine what daemons are necessary to run Samba in the current role
+	samba_server_role=$(${testparm_command} --parameter-name='server role' 2>/dev/null)
+	case "${samba_server_role}" in
+	active\ directory\ domain\ controller)
+		samba_daemons="samba"
+		;;
+	auto|*)
+		samba_daemons="nmbd smbd winbindd"
+		;;
+	esac
+
+	# Fetch parameters from configuration file
+	samba_server_lockdir="$(${testparm_command} --parameter-name='lock directory' 2>/dev/null)"
+	samba_server_lockdir=${samba_server_lockdir:=/var/db/samba4}
+	samba_server_piddir="$(${testparm_command} --parameter-name='pid directory' 2>/dev/null)"
+	samba_server_piddir=${samba_server_piddir:=/var/run/samba4}
+	samba_server_privatedir="$(${testparm_command} --parameter-name='private dir' 2>/dev/null)"
+	samba_server_privatedir=${samba_server_privatedir:=/var/db/samba4/private}
+}
+
+samba_server_config_init
+
+required_files="${samba_server_config}"
+required_dirs="${samba_server_lockdir}"
