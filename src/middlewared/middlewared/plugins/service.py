@@ -697,6 +697,7 @@ class ServiceService(CRUDService):
 
     async def _restart_cron(self, **kwargs):
         await self._service("ix-crontab", "start", quiet=True, **kwargs)
+        await self._service("cron", "restart", quiet=True, **kwargs)
 
     async def _start_motd(self, **kwargs):
         await self._service("ix-motd", "start", quiet=True, **kwargs)
