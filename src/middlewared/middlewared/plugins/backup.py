@@ -1,11 +1,12 @@
 from azure.storage import CloudStorageAccount
 from google.cloud import storage
 
+from middlewared.rclone.base import BaseRcloneRemote
 from middlewared.schema import accepts, Bool, Dict, Int, Patch, Ref, Str
 from middlewared.service import (
     CallError, CRUDService, Service, ValidationErrors, item_method, filterable, job, private
 )
-from middlewared.utils import Popen
+from middlewared.utils import load_modules, load_classes, Popen, run
 
 import asyncio
 import base64
@@ -24,6 +25,40 @@ import requests
 import tempfile
 
 CHUNK_SIZE = 5 * 1024 * 1024
+
+REMOTES = {}
+
+
+class RcloneConfig:
+    def __init__(self, credentials):
+        #self.provider = provider
+        self.credentials = credentials
+        #self.attributes = attributes
+
+        self.tmp_file = None
+        self.path = None
+
+    async def __aenter__(self):
+        self.tmp_file = tempfile.NamedTemporaryFile(mode='w+')
+
+        # Make sure only root can read it as there is sensitive data
+        os.chmod(self.tmp_file.name, 0o600)
+
+        # config = dict(self.attributes, **REMOTES[self.provider].get_remote_extra(self.credentials, self.attributes))
+
+        config = dict(self.credentials["attributes"], type=REMOTES[self.credentials["provider"]].rclone_type)
+
+        self.tmp_file.write("[remote]\n")
+        for k, v in config.items():
+            self.tmp_file.write(f"{k} = {v}\n")
+
+        self.tmp_file.flush()
+
+        return self.tmp_file.name
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.tmp_file:
+            self.tmp_file.close()
 
 
 async def rclone(job, backup, config):
@@ -118,16 +153,13 @@ class BackupCredentialService(CRUDService):
     @accepts(Dict(
         'backup-credential',
         Str('name'),
-        Str('provider', enum=[
-            'AMAZON',
-            'AZURE',
-            'BACKBLAZE',
-            'GCLOUD',
-        ]),
+        Str('provider'),
         Dict('attributes', additional_attrs=True),
         register=True,
     ))
     async def do_create(self, data):
+        self._validate("backup-credential", data)
+
         return await self.middleware.call(
             'datastore.insert',
             'system.cloudcredentials',
@@ -136,6 +168,8 @@ class BackupCredentialService(CRUDService):
 
     @accepts(Int('id'), Ref('backup-credential'))
     async def do_update(self, id, data):
+        self._validate("backup-credential", data)
+
         return await self.middleware.call(
             'datastore.update',
             'system.cloudcredentials',
@@ -150,6 +184,21 @@ class BackupCredentialService(CRUDService):
             'system.cloudcredentials',
             id,
         )
+
+    def _validate(self, schema_name, data):
+        verrors = ValidationErrors()
+
+        if data["provider"] not in REMOTES:
+            verrors.add(f"{schema_name}.provider", "Invalid provider")
+        else:
+            schema = Dict(f"{schema_name}.attributes", **REMOTES[data["provider"]].credentials_schema)
+            try:
+                schema.validate(data["attributes"])
+            except ValidationErrors as e:
+                verrors.extend(e)
+
+        if verrors:
+            raise verrors
 
 
 class BackupService(CRUDService):
@@ -177,6 +226,15 @@ class BackupService(CRUDService):
         return backup
 
     @private
+    async def _get_backup(self, id):
+        return await self.middleware.call('datastore.query', 'tasks.cloudsync', [('id', '=', id)], {'get': True})
+
+    @private
+    async def _get_credential(self, credential_id):
+        return await self.middleware.call('datastore.query', 'system.cloudcredentials', [('id', '=', credential_id)],
+                                          {'get': True})
+
+    @private
     async def _validate(self, verrors, name, data):
         if data['encryption']:
             if not data['encryption_password']:
@@ -185,22 +243,11 @@ class BackupService(CRUDService):
             if not data['encryption_salt']:
                 verrors.add(f'{name}.encryption_salt', 'This field is required when encryption is enabled')
 
-        credential = await self.middleware.call('datastore.query', 'system.cloudcredentials', [('id', '=', data['credential'])], {'get': True})
-        if credential is None:
-            verrors.add(f'{name}.credential', f'Credential {data["credential"]} not found', errno.ENOENT)
-            return
+        credential = await self._get_credential(data['credential'])
 
-        if credential['provider'] == 'AMAZON':
-            data['attributes']['region'] = await self.middleware.call('backup.s3.get_bucket_location', credential['id'], data['attributes']['bucket'])
-        elif credential['provider'] in ('AZURE', 'BACKBLAZE', 'GCLOUD'):
-            # AZURE|BACKBLAZE|GCLOUD does not need validation nor new data at this stage
-            pass
-        else:
-            verrors.add(f'{name}.provider', f'Invalid provider: {credential["provider"]}')
-
-        if credential['provider'] == 'AMAZON':
-            if data['attributes'].get('encryption') not in (None, 'AES256'):
-                verrors.add(f'{name}.attributes.encryption', 'Encryption should be null or "AES256"')
+        attributes_verrors = ValidationErrors()
+        await REMOTES[credential["provider"]].pre_save_task(credential, data["attributes"], attributes_verrors)
+        verrors.add_child(f"{name}.attributes", attributes_verrors)
 
     @accepts(Dict(
         'backup',
@@ -270,13 +317,8 @@ class BackupService(CRUDService):
         """
         Updates the backup entry `id` with `data`.
         """
-        backup = await self.middleware.call(
-            'datastore.query',
-            'tasks.cloudsync',
-            [('id', '=', id)],
-            {'get': True},
-        )
-        assert backup is not None
+        backup = await self._get_backup(id)
+
         # credential is a foreign key for now
         if backup['credential']:
             backup['credential'] = backup['credential']['id']
@@ -294,6 +336,7 @@ class BackupService(CRUDService):
 
         await self.middleware.call('datastore.update', 'tasks.cloudsync', id, backup)
         await self.middleware.call('notifier.restart', 'cron')
+
         return id
 
     @accepts(Int('id'))
@@ -304,6 +347,18 @@ class BackupService(CRUDService):
         await self.middleware.call('datastore.delete', 'tasks.cloudsync', id)
         await self.middleware.call('notifier.restart', 'cron')
 
+    @accepts(Int("credential_id"), Str("path"))
+    async def ls(self, credential_id, path):
+        credential = await self._get_credential(credential_id)
+
+        async with RcloneConfig(credential) as config:
+            proc = await run(["rclone", "--config", config, "lsjson", "remote:" + path.strip("/")], check=False,
+                             encoding="utf8")
+            if proc.returncode == 0:
+                return json.loads(proc.stdout)
+            else:
+                raise CallError(proc.stderr)
+
     @item_method
     @accepts(Int('id'))
     @job(lock=lambda args: 'backup:{}'.format(args[-1]), lock_queue_size=1, logs=True)
@@ -312,15 +367,9 @@ class BackupService(CRUDService):
         Run the backup job `id`, syncing the local data to remote.
         """
 
-        backup = await self.middleware.call('datastore.query', 'tasks.cloudsync', [('id', '=', id)], {'get': True})
-        if not backup:
-            raise ValueError("Unknown id")
+        backup = await self._get_backup(id)
 
-        credential = await self.middleware.call('datastore.query', 'system.cloudcredentials', [('id', '=', backup['credential']['id'])], {'get': True})
-        if not credential:
-            raise ValueError("Backup credential not found.")
-
-        return await self._call_provider_method(credential['provider'], 'sync', job, backup, credential)
+        return await rclone(job, backup)
 
     @accepts(Int('credential_id'), Str('bucket'), Str('path'))
     async def is_dir(self, credential_id, bucket, path):
@@ -331,324 +380,12 @@ class BackupService(CRUDService):
 
         return await self._call_provider_method(credential['provider'], 'is_dir', credential_id, bucket, path)
 
-    @private
-    async def _call_provider_method(self, provider, method, *args, **kwargs):
-        try:
-            plugin = {
-                'AMAZON': 's3',
-                'AZURE': 'azure',
-                'BACKBLAZE': 'b2',
-                'GCLOUD': 'gcs',
-            }[provider]
-        except KeyError:
-            raise NotImplementedError(f'Unsupported provider: {provider}')
 
-        return await self.middleware.call(f'backup.{plugin}.{method}', *args, **kwargs)
+async def setup(middleware):
+    for module in load_modules(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir,
+                                            "rclone", "remote")):
+        for cls in load_classes(module, BaseRcloneRemote, []):
+            remote = cls(middleware)
+            REMOTES[remote.name] = remote
 
-
-class BackupS3Service(Service):
-
-    class Config:
-        namespace = 'backup.s3'
-
-    @private
-    async def get_client(self, id):
-        credential = await self.middleware.call('datastore.query', 'system.cloudcredentials', [('id', '=', id)], {'get': True})
-
-        client = boto3.client(
-            's3',
-            endpoint_url=credential['attributes'].get('endpoint', '').strip() or None,
-            aws_access_key_id=credential['attributes'].get('access_key'),
-            aws_secret_access_key=credential['attributes'].get('secret_key'),
-        )
-        return client
-
-    @accepts(Int('id'))
-    async def get_buckets(self, id):
-        """Returns buckets from a given S3 credential."""
-        client = await self.get_client(id)
-        buckets = []
-        for bucket in (await self.middleware.run_in_io_thread(client.list_buckets))['Buckets']:
-            buckets.append({
-                'name': bucket['Name'],
-                'creation_date': bucket['CreationDate'],
-            })
-
-        return buckets
-
-    @accepts(Int('id'), Str('name'))
-    async def get_bucket_location(self, id, name):
-        """
-        Returns bucket `name` location (region) from credential `id`.
-        """
-        client = await self.get_client(id)
-        response = (await self.middleware.run_in_io_thread(client.get_bucket_location, Bucket=name))
-        return response['LocationConstraint']
-
-    @private
-    async def sync(self, job, backup, credential):
-        return await rclone(job, backup, {
-            "type": "s3",
-            "env_auth": "false",
-            "access_key_id": credential['attributes']['access_key'],
-            "secret_access_key": credential['attributes']['secret_key'],
-            "region": backup['attributes']['region'] or '',
-            "endpoint": credential['attributes'].get("endpoint", ""),
-            "server_side_encryption": backup['attributes'].get('encryption') or '',
-        })
-
-    @private
-    async def put(self, backup, filename, f):
-        client = await self.get_client(backup['id'])
-        folder = backup['attributes']['folder'] or ''
-        key = os.path.join(folder, filename)
-        parts = []
-        idx = 1
-
-        try:
-            mp = client.create_multipart_upload(
-                Bucket=backup['attributes']['bucket'],
-                Key=key
-            )
-
-            while True:
-                chunk = f.read(CHUNK_SIZE)
-                if chunk == b'':
-                    break
-
-                resp = client.upload_part(
-                    Bucket=backup['attributes']['bucket'],
-                    Key=key,
-                    PartNumber=idx,
-                    UploadId=mp['UploadId'],
-                    ContentLength=CHUNK_SIZE,
-                    Body=chunk
-                )
-
-                parts.append({
-                    'ETag': resp['ETag'],
-                    'PartNumber': idx
-                })
-
-                idx += 1
-
-            client.complete_multipart_upload(
-                Bucket=backup['attributes']['bucket'],
-                Key=key,
-                UploadId=mp['UploadId'],
-                MultipartUpload={
-                    'Parts': parts
-                }
-            )
-        finally:
-            pass
-
-    @private
-    async def get(self, backup, filename, f):
-        client = await self.get_client(backup['id'])
-        folder = backup['attributes']['folder'] or ''
-        key = os.path.join(folder, filename)
-        obj = client.get_object(
-            Bucket=backup['attributes']['bucket'],
-            Key=key
-        )
-
-        shutil.copyfileobj(obj['Body'], f)
-
-    @private
-    async def ls(self, cred_id, bucket, path):
-        client = await self.get_client(cred_id)
-        obj = client.list_objects_v2(
-            Bucket=bucket,
-            Prefix=path,
-        )
-        if obj['KeyCount'] == 0:
-            return []
-        return obj['Contents']
-
-    @private
-    async def is_dir(self, cred_id, bucket, path):
-        client = await self.get_client(cred_id)
-        objects_list = await self.middleware.run_in_thread(
-            client.list_objects_v2,
-            Bucket=bucket,
-            Prefix=path,
-        )
-        for obj in objects_list.get('Contents', []):
-            if obj['Key'] == path or obj['Key'].startswith(f'{path}/'):
-                return True
-        return False
-
-
-class BackupB2Service(Service):
-
-    class Config:
-        namespace = 'backup.b2'
-
-    def __get_auth(self, id):
-        credential = self.middleware.call_sync('datastore.query', 'system.cloudcredentials', [('id', '=', id)], {'get': True})
-
-        r = requests.get(
-            'https://api.backblazeb2.com/b2api/v1/b2_authorize_account',
-            auth=(credential['attributes'].get('account_id'), credential['attributes'].get('app_key')),
-        )
-        if r.status_code != 200:
-            raise CallError(f'Invalid request: {r.text}')
-        return r.json()
-
-    @accepts(Int('id'))
-    def get_buckets(self, id):
-        """Returns buckets from a given B2 credential."""
-        auth = self.__get_auth(id)
-        r = requests.post(
-            f'{auth["apiUrl"]}/b2api/v1/b2_list_buckets',
-            headers={
-                'Authorization': auth['authorizationToken'],
-                'Content-Type': 'application/json',
-            },
-            data=json.dumps({'accountId': auth['accountId']}),
-        )
-        if r.status_code != 200:
-            raise CallError(f'Invalid B2 request: [{r.status_code}] {r.text}')
-        return r.json()['buckets']
-
-    @private
-    async def sync(self, job, backup, credential):
-        return await rclone(job, backup, {
-            "type": "b2",
-            "env_auth": "false",
-            "account": credential['attributes']['account_id'],
-            "key": credential['attributes']['app_key'],
-            "endpoint": "",
-        })
-
-    @private
-    def is_dir(self, cred_id, bucket, path):
-        auth = self.__get_auth(cred_id)
-
-        for b in self.get_buckets(cred_id):
-            if b['bucketName'] == bucket:
-                bucket_id = b['bucketId']
-                break
-        else:
-            raise ValueError("Bucket not found")
-
-        startFileName = None
-        while True:
-            r = requests.post(
-                f'{auth["apiUrl"]}/b2api/v1/b2_list_file_names',
-                headers={
-                    'Authorization': auth['authorizationToken'],
-                    'Content-Type': 'application/json',
-                },
-                data=json.dumps({'bucketId': bucket_id,
-                                 'startFileName': startFileName,
-                                 'prefix': path,
-                                 'delimiter': '/'}),
-            )
-            if r.status_code != 200:
-                raise CallError(f'Invalid B2 request: [{r.status_code}] {r.text}')
-            response = r.json()
-            for file in response['files']:
-                if file['fileName'] == f'{path}/':
-                    return True
-            if response['nextFileName'] is None:
-                break
-            startFileName = response['nextFileName']
-
-        return False
-
-
-class BackupGCSService(Service):
-
-    class Config:
-        namespace = 'backup.gcs'
-
-    def __get_client(self, id):
-        credential = self.middleware.call_sync('datastore.query', 'system.cloudcredentials', [('id', '=', id)], {'get': True})
-
-        with tempfile.NamedTemporaryFile(mode='w+') as f:
-            # Make sure only root can read it as there is sensitive data
-            os.chmod(f.name, 0o600)
-            f.write(json.dumps(credential['attributes']['keyfile']))
-            f.flush()
-            client = storage.Client.from_service_account_json(f.name)
-
-        return client
-
-    @accepts(Int('id'))
-    def get_buckets(self, id):
-        """Returns buckets from a given B2 credential."""
-        client = self.__get_client(id)
-        buckets = []
-        for i in client.list_buckets():
-            buckets.append(i._properties)
-        return buckets
-
-    @private
-    async def sync(self, job, backup, credential):
-        with tempfile.NamedTemporaryFile(mode='w+') as keyf:
-            os.chmod(keyf.name, 0o600)
-
-            keyf.write(json.dumps(credential['attributes']['keyfile']))
-            keyf.flush()
-
-            return await rclone(job, backup, {
-                "type": "google cloud storage",
-                "client_id": "",
-                "client_secret": "",
-                "project_number": "",
-                "service_account_file": keyf.name,
-            })
-
-    @private
-    def is_dir(self, cred_id, bucket, path):
-        client = self.__get_client(cred_id)
-        bucket = storage.Bucket(client, bucket)
-        prefix = f"{path}/"
-        for blob in bucket.list_blobs(prefix=prefix):
-            if blob.name.startswith(prefix):
-                return True
-        return False
-
-
-class BackupAzureService(Service):
-
-    class Config:
-        namespace = 'backup.azure'
-
-    def __get_client(self, id):
-        credential = self.middleware.call_sync('datastore.query', 'system.cloudcredentials', [('id', '=', id)], {'get': True})
-
-        return CloudStorageAccount(
-            credential['attributes'].get('account_name'),
-            credential['attributes'].get('account_key'),
-        )
-
-    @accepts(Int('id'))
-    def get_buckets(self, id):
-        client = self.__get_client(id)
-        block_blob_service = client.create_block_blob_service()
-        buckets = []
-        for bucket in block_blob_service.list_containers():
-            buckets.append(bucket.name)
-        return buckets
-
-    @private
-    async def sync(self, job, backup, credential):
-        return await rclone(job, backup, {
-            "type": "azureblob",
-            "account": credential['attributes']['account_name'],
-            "key": credential['attributes']['account_key'],
-            "endpoint": "",
-        })
-
-    @private
-    def is_dir(self, cred_id, bucket, path):
-        client = self.__get_client(cred_id)
-        block_blob_service = client.create_block_blob_service()
-        prefix = f"{path}/"
-        for blob in block_blob_service.list_blobs(bucket, prefix=prefix):
-            if blob.name.startswith(prefix):
-                return True
-        return False
+    REMOTES["BACKBLAZE"] = REMOTES["B2"]
